@@ -49,7 +49,10 @@ This guide explains how to deploy your **FastAPI Backend** to Railway.app and co
 4.  Copy the `MYSQL_URL` value.
 5.  Go back to your **Backend Service** -> **Variables**.
 6.  Add a new variable: `DATABASE_URL` and paste the `MYSQL_URL`.
-    *   *Note: Ensure your `config.py` uses `DATABASE_URL` if present, or configure `MYSQL_HOST`, `MYSQL_USER`, etc. individually using the values from the MySQL service.*
+    *   **CRITICAL SETTING**:
+        *   **Locally** (in `.env`): Your value was `sqlite:///./buyv.db`
+        *   **On Railway** (Variables): You MUST use the `mysql://...` value you just copied.
+        *   *Why?* SQLite files get deleted on Railway restarts. MySQL is persistent and safe.
 
 ---
 

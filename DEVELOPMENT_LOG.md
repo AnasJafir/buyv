@@ -241,6 +241,19 @@
 
 ---
 
+## Render Deployment Prep - 2025-12-24 16:55:00
+
+**Reason**: Railway no longer offers free trial. Moved to Render.com.
+
+**Changes Made:**
+- Updated `requirements.txt` with `psycopg2-binary`.
+- Created `RENDER_DEPLOYMENT_GUIDE.md`.
+- **Note**: `DATABASE_URL` for Render must start with `postgresql://` (not `postgres://`).
+
+**Status:** Ready to Deploy.
+
+---
+
 **Changes Made:**
 - `buyv_backend/app/posts.py`:
   - **Added** `GET /posts/{post_uid}` endpoint (was missing)
