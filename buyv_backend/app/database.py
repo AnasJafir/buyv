@@ -2,6 +2,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from .config import DATABASE_URL
 
+# Handle Railway/Render provided URLs which start with mysql://
+# We need to tell SQLAlchemy to use PyMySQL driver
+if DATABASE_URL.startswith("mysql://"):
+    DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://")
+
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(
