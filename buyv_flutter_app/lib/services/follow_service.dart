@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'follow_api_service.dart';
 import '../presentation/providers/auth_provider.dart';

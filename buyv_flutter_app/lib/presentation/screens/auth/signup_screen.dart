@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_text_field.dart';
@@ -360,7 +361,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
 
       if (mounted && success) {
-        Navigator.pushReplacementNamed(context, '/home');
+        context.go('/home');
       } else if (mounted) {
         _showErrorSnackBar(authProvider.errorMessage ?? 'Failed to create account');
       }
@@ -371,7 +372,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final success = await authProvider.signInWithGoogle();
     
     if (mounted && success) {
-      Navigator.pushReplacementNamed(context, '/home');
+      context.go('/home');
     } else if (mounted) {
       _showErrorSnackBar(authProvider.errorMessage ?? 'Failed to create account with Google');
     }

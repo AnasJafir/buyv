@@ -35,8 +35,8 @@ class _AddPostScreenState extends State<AddPostScreen> {
   bool _isLoading = false;
   XFile? _selectedMedia;
   String _selectedPostType = 'reel'; // reel, photo
-  List<String> _taggedFriends = [];
-  List<String> _hashtags = [];
+  final List<String> _taggedFriends = [];
+  final List<String> _hashtags = [];
   String? _selectedMusic;
 
   @override
@@ -195,7 +195,7 @@ class _AddPostScreenState extends State<AddPostScreen> {
       );
 
       if (post == null) {
-        throw Exception('Failed to publish ${_selectedPostType}');
+        throw Exception('Failed to publish $_selectedPostType');
       }
 
       if (mounted) {

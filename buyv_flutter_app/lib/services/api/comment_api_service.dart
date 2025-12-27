@@ -70,4 +70,20 @@ class CommentApiService {
     );
     return _parseList(res);
   }
+
+  /// Delete a comment
+  static Future<void> deleteComment(String commentId) async {
+    final res = await http.delete(
+      _url('/comments/$commentId'),
+      headers: await _authHeaders(),
+    );
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    if (!ok) {
+      final body = res.body.isNotEmpty ? jsonDecode(res.body) : {};
+      final detail = body is Map && body['detail'] != null
+          ? body['detail'].toString()
+          : 'Failed to delete comment (${res.statusCode})';
+      throw Exception(detail);
+    }
+  }
 }

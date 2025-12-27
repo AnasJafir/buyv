@@ -4,6 +4,25 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import '../constants/app_constants.dart';
 
+/// Exception personnalisée pour les erreurs d'upload Cloudinary
+class CloudinaryUploadException implements Exception {
+  final String message;
+  final String? details;
+  final int? statusCode;
+
+  CloudinaryUploadException(this.message, {this.details, this.statusCode});
+
+  @override
+  String toString() {
+    if (details != null) {
+      return 'CloudinaryUploadException: $message\nDetails: $details';
+    }
+    return 'CloudinaryUploadException: $message';
+  }
+}
+
+/// Service réutilisable pour l'upload d'images et vidéos vers Cloudinary
+/// Utilise uniquement des uploads non signés (unsigned uploads) - aucun secret API requis
 class CloudinaryService {
   static CloudinaryService? _instance;
 
@@ -14,209 +33,313 @@ class CloudinaryService {
     return _instance!;
   }
 
-  /// Upload image to Cloudinary
-  static Future<String?> uploadImage(XFile imageFile, {String? folder}) async {
+  /// Obtient l'instance Cloudinary configurée
+  CloudinaryPublic _getCloudinary() {
+    final cloudName = AppConstants.cloudinaryCloudName;
+    final uploadPreset = AppConstants.cloudinaryUploadPreset;
+
+    if (cloudName.isEmpty || uploadPreset.isEmpty) {
+      throw CloudinaryUploadException(
+        'Cloudinary credentials are not configured',
+        details: 'Cloud Name: $cloudName, Upload Preset: $uploadPreset',
+      );
+    }
+
+    return CloudinaryPublic(
+      cloudName,
+      uploadPreset,
+      cache: false,
+    );
+  }
+
+  /// Upload une image vers Cloudinary
+  /// 
+  /// [imageFile] : Le fichier image à uploader (XFile depuis image_picker)
+  /// [folder] : Dossier de destination dans Cloudinary (optionnel, défaut: 'images')
+  /// [publicId] : ID public personnalisé (optionnel, généré automatiquement si non fourni)
+  /// 
+  /// Retourne l'URL sécurisée de l'image uploadée
+  /// 
+  /// Lance [CloudinaryUploadException] en cas d'erreur
+  static Future<String> uploadImage(
+    XFile imageFile, {
+    String? folder,
+    String? publicId,
+  }) async {
     try {
-      debugPrint('🚀 Starting image upload to Cloudinary...');
-      debugPrint('📁 Folder: ${folder ?? 'default'}');
+      debugPrint('🚀 [Cloudinary] Starting image upload...');
+      debugPrint('📁 Folder: ${folder ?? 'images'}');
       debugPrint('📄 File path: ${imageFile.path}');
       debugPrint('📄 File name: ${imageFile.name}');
+      debugPrint('📏 File size: ${await imageFile.length()} bytes');
+
+      final cloudinary = CloudinaryService.instance._getCloudinary();
 
       debugPrint('☁️ Cloud Name: ${AppConstants.cloudinaryCloudName}');
       debugPrint('🔧 Upload Preset: ${AppConstants.cloudinaryUploadPreset}');
 
-      final cloudinary = CloudinaryPublic(
-        AppConstants.cloudinaryCloudName,
-        AppConstants.cloudinaryUploadPreset,
-        cache: false,
-      );
-
+      // Lire les bytes du fichier
+      debugPrint('📖 Reading file bytes...');
       final bytes = await imageFile.readAsBytes();
+      debugPrint('✅ File bytes read: ${bytes.length} bytes');
 
-      final response = await cloudinary.uploadFile(
-        CloudinaryFile.fromByteData(
-          bytes.buffer.asByteData(),
-          identifier: imageFile.name, // Use actual filename with extension
-          folder: folder ?? 'images',
-          publicId: 'img_${DateTime.now().millisecondsSinceEpoch}',
-        ),
+      // Préparer le fichier Cloudinary
+      final cloudinaryFile = CloudinaryFile.fromByteData(
+        bytes.buffer.asByteData(),
+        identifier: imageFile.name,
+        folder: folder ?? 'images',
+        publicId: publicId ?? 'img_${DateTime.now().millisecondsSinceEpoch}',
       );
 
-      debugPrint('✅ Image uploaded successfully');
-      debugPrint('🔗 URL: ${response.secureUrl}');
+      debugPrint('📤 Uploading to Cloudinary...');
+      final startTime = DateTime.now();
+
+      // Upload avec gestion de progression
+      final response = await cloudinary.uploadFile(cloudinaryFile);
+
+      final duration = DateTime.now().difference(startTime);
+      debugPrint('✅ [Cloudinary] Image uploaded successfully in ${duration.inMilliseconds}ms');
+      debugPrint('🔗 Secure URL: ${response.secureUrl}');
+      debugPrint('📊 Public ID: ${response.publicId}');
+
+      if (response.secureUrl.isEmpty) {
+        throw CloudinaryUploadException(
+          'Upload succeeded but no URL was returned',
+          details: 'Response: ${response.toString()}',
+        );
+      }
 
       return response.secureUrl;
     } on DioException catch (e) {
-      debugPrint('❌ Error uploading image (Dio): ${e.message}');
-      debugPrint('❌ Response data: ${e.response?.data}');
-      return null;
-    } catch (e) {
-      debugPrint('❌ Error uploading image: $e');
-      return null;
+      final errorMessage = _extractErrorMessage(e);
+      debugPrint('❌ [Cloudinary] Error uploading image (Dio): $errorMessage');
+      debugPrint('❌ Status Code: ${e.response?.statusCode}');
+      debugPrint('❌ Response Data: ${e.response?.data}');
+      debugPrint('❌ Request Path: ${e.requestOptions.path}');
+
+      throw CloudinaryUploadException(
+        'Failed to upload image: $errorMessage',
+        details: e.response?.data?.toString(),
+        statusCode: e.response?.statusCode,
+      );
+    } on CloudinaryUploadException {
+      rethrow;
+    } catch (e, stackTrace) {
+      debugPrint('❌ [Cloudinary] Unexpected error uploading image: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
+
+      throw CloudinaryUploadException(
+        'Unexpected error during image upload: ${e.toString()}',
+        details: stackTrace.toString(),
+      );
     }
   }
 
-  /// Upload video to Cloudinary
-  static Future<String?> uploadVideo(XFile videoFile, {String? folder}) async {
+  /// Upload une vidéo vers Cloudinary
+  /// 
+  /// [videoFile] : Le fichier vidéo à uploader (XFile depuis image_picker)
+  /// [folder] : Dossier de destination dans Cloudinary (optionnel, défaut: 'videos')
+  /// [publicId] : ID public personnalisé (optionnel, généré automatiquement si non fourni)
+  /// 
+  /// Retourne l'URL sécurisée de la vidéo uploadée
+  /// 
+  /// Lance [CloudinaryUploadException] en cas d'erreur
+  static Future<String> uploadVideo(
+    XFile videoFile, {
+    String? folder,
+    String? publicId,
+  }) async {
     try {
-      debugPrint('🚀 Starting video upload to Cloudinary...');
-      debugPrint('📁 Folder: ${folder ?? 'default'}');
+      debugPrint('🚀 [Cloudinary] Starting video upload...');
+      debugPrint('📁 Folder: ${folder ?? 'videos'}');
       debugPrint('📄 File path: ${videoFile.path}');
       debugPrint('📄 File name: ${videoFile.name}');
+      debugPrint('📏 File size: ${await videoFile.length()} bytes');
 
-      final cloudinary = CloudinaryPublic(
-        AppConstants.cloudinaryCloudName,
-        AppConstants.cloudinaryUploadPreset,
-        cache: false,
-      );
+      final cloudinary = CloudinaryService.instance._getCloudinary();
 
+      debugPrint('☁️ Cloud Name: ${AppConstants.cloudinaryCloudName}');
+      debugPrint('🔧 Upload Preset: ${AppConstants.cloudinaryUploadPreset}');
+
+      // Lire les bytes du fichier
+      debugPrint('📖 Reading file bytes...');
       final bytes = await videoFile.readAsBytes();
+      debugPrint('✅ File bytes read: ${bytes.length} bytes');
 
-      final response = await cloudinary.uploadFile(
-        CloudinaryFile.fromByteData(
-          bytes.buffer.asByteData(),
-          identifier: videoFile.name,
-          folder: folder ?? 'videos',
-          publicId: 'vid_${DateTime.now().millisecondsSinceEpoch}',
-          resourceType: CloudinaryResourceType.Video,
-        ),
+      // Préparer le fichier Cloudinary
+      final cloudinaryFile = CloudinaryFile.fromByteData(
+        bytes.buffer.asByteData(),
+        identifier: videoFile.name,
+        folder: folder ?? 'videos',
+        publicId: publicId ?? 'vid_${DateTime.now().millisecondsSinceEpoch}',
+        resourceType: CloudinaryResourceType.Video,
       );
 
-      debugPrint('✅ Video uploaded successfully');
-      debugPrint('🔗 URL: ${response.secureUrl}');
+      debugPrint('📤 Uploading to Cloudinary...');
+      final startTime = DateTime.now();
+
+      // Upload avec gestion de progression
+      final response = await cloudinary.uploadFile(cloudinaryFile);
+
+      final duration = DateTime.now().difference(startTime);
+      debugPrint('✅ [Cloudinary] Video uploaded successfully in ${duration.inMilliseconds}ms');
+      debugPrint('🔗 Secure URL: ${response.secureUrl}');
+      debugPrint('📊 Public ID: ${response.publicId}');
+
+      if (response.secureUrl.isEmpty) {
+        throw CloudinaryUploadException(
+          'Upload succeeded but no URL was returned',
+          details: 'Response: ${response.toString()}',
+        );
+      }
 
       return response.secureUrl;
     } on DioException catch (e) {
-      debugPrint('❌ Error uploading video (Dio): ${e.message}');
-      debugPrint('❌ Response data: ${e.response?.data}');
-      return null;
-    } catch (e) {
-      debugPrint('❌ Error uploading video: $e');
-      return null;
+      final errorMessage = _extractErrorMessage(e);
+      debugPrint('❌ [Cloudinary] Error uploading video (Dio): $errorMessage');
+      debugPrint('❌ Status Code: ${e.response?.statusCode}');
+      debugPrint('❌ Response Data: ${e.response?.data}');
+      debugPrint('❌ Request Path: ${e.requestOptions.path}');
+
+      throw CloudinaryUploadException(
+        'Failed to upload video: $errorMessage',
+        details: e.response?.data?.toString(),
+        statusCode: e.response?.statusCode,
+      );
+    } on CloudinaryUploadException {
+      rethrow;
+    } catch (e, stackTrace) {
+      debugPrint('❌ [Cloudinary] Unexpected error uploading video: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
+
+      throw CloudinaryUploadException(
+        'Unexpected error during video upload: ${e.toString()}',
+        details: stackTrace.toString(),
+      );
     }
   }
 
-  /// Upload profile image with specific transformations
-  static Future<String?> uploadProfileImage(String imagePath) async {
+  /// Upload une image de profil avec transformations spécifiques
+  /// 
+  /// [imagePath] : Chemin du fichier image
+  /// 
+  /// Retourne l'URL sécurisée de l'image uploadée
+  /// 
+  /// Lance [CloudinaryUploadException] en cas d'erreur
+  static Future<String> uploadProfileImage(String imagePath) async {
     try {
-      debugPrint('🚀 Starting profile image upload to Cloudinary...');
+      debugPrint('🚀 [Cloudinary] Starting profile image upload...');
       debugPrint('📄 File path: $imagePath');
 
-      final cloudinary = CloudinaryPublic(
-        AppConstants.cloudinaryCloudName,
-        AppConstants.cloudinaryUploadPreset,
-        cache: false,
+      final cloudinary = CloudinaryService.instance._getCloudinary();
+
+      final cloudinaryFile = CloudinaryFile.fromFile(
+        imagePath,
+        folder: 'profiles',
+        publicId: 'profile_${DateTime.now().millisecondsSinceEpoch}',
       );
 
-      final response = await cloudinary.uploadFile(
-        CloudinaryFile.fromFile(
-          imagePath,
-          folder: 'profiles',
-          publicId: 'profile_${DateTime.now().millisecondsSinceEpoch}',
-        ),
-      );
+      debugPrint('📤 Uploading to Cloudinary...');
+      final startTime = DateTime.now();
 
-      debugPrint('✅ Profile image uploaded successfully');
-      debugPrint('🔗 URL: ${response.secureUrl}');
+      final response = await cloudinary.uploadFile(cloudinaryFile);
+
+      final duration = DateTime.now().difference(startTime);
+      debugPrint('✅ [Cloudinary] Profile image uploaded successfully in ${duration.inMilliseconds}ms');
+      debugPrint('🔗 Secure URL: ${response.secureUrl}');
+
+      if (response.secureUrl.isEmpty) {
+        throw CloudinaryUploadException(
+          'Upload succeeded but no URL was returned',
+          details: 'Response: ${response.toString()}',
+        );
+      }
 
       return response.secureUrl;
-    } catch (e) {
-      debugPrint('❌ Error uploading profile image: $e');
-      return null;
+    } on DioException catch (e) {
+      final errorMessage = _extractErrorMessage(e);
+      debugPrint('❌ [Cloudinary] Error uploading profile image: $errorMessage');
+
+      throw CloudinaryUploadException(
+        'Failed to upload profile image: $errorMessage',
+        details: e.response?.data?.toString(),
+        statusCode: e.response?.statusCode,
+      );
+    } on CloudinaryUploadException {
+      rethrow;
+    } catch (e, stackTrace) {
+      debugPrint('❌ [Cloudinary] Unexpected error uploading profile image: $e');
+
+      throw CloudinaryUploadException(
+        'Unexpected error during profile image upload: ${e.toString()}',
+        details: stackTrace.toString(),
+      );
     }
   }
 
-  /// Upload product images with specific transformations
+  /// Upload plusieurs images de produits
+  /// 
+  /// [imagePaths] : Liste des chemins des fichiers images
+  /// 
+  /// Retourne la liste des URLs uploadées (seulement les uploads réussis)
   static Future<List<String>> uploadProductImages(
     List<String> imagePaths,
   ) async {
-    List<String> uploadedUrls = [];
+    final List<String> uploadedUrls = [];
+    final cloudinary = CloudinaryService.instance._getCloudinary();
 
-    final cloudinary = CloudinaryPublic(
-      AppConstants.cloudinaryCloudName,
-      AppConstants.cloudinaryUploadPreset,
-      cache: false,
-    );
+    debugPrint('🚀 [Cloudinary] Starting batch upload of ${imagePaths.length} product images...');
 
     for (int i = 0; i < imagePaths.length; i++) {
       try {
-        debugPrint(
-          '🚀 Uploading product image ${i + 1}/${imagePaths.length}...',
+        debugPrint('📤 [Cloudinary] Uploading product image ${i + 1}/${imagePaths.length}...');
+
+        final cloudinaryFile = CloudinaryFile.fromFile(
+          imagePaths[i],
+          folder: 'products',
+          publicId: 'product_${DateTime.now().millisecondsSinceEpoch}_$i',
         );
 
-        final response = await cloudinary.uploadFile(
-          CloudinaryFile.fromFile(
-            imagePaths[i],
-            folder: 'products',
-            publicId: 'product_${DateTime.now().millisecondsSinceEpoch}_$i',
-          ),
-        );
+        final response = await cloudinary.uploadFile(cloudinaryFile);
 
-        uploadedUrls.add(response.secureUrl);
-        debugPrint('✅ Product image ${i + 1} uploaded successfully');
+        if (response.secureUrl.isNotEmpty) {
+          uploadedUrls.add(response.secureUrl);
+          debugPrint('✅ [Cloudinary] Product image ${i + 1} uploaded successfully');
+        } else {
+          debugPrint('⚠️ [Cloudinary] Product image ${i + 1} uploaded but no URL returned');
+        }
       } catch (e) {
-        debugPrint('❌ Error uploading product image ${i + 1}: $e');
+        debugPrint('❌ [Cloudinary] Error uploading product image ${i + 1}: $e');
+        // Continue avec les autres images même si une échoue
       }
     }
 
+    debugPrint('✅ [Cloudinary] Batch upload completed: ${uploadedUrls.length}/${imagePaths.length} successful');
     return uploadedUrls;
   }
 
-  /// Upload reel video with specific transformations
-  static Future<String?> uploadReelVideo(XFile videoFile) async {
-    try {
-      debugPrint('🚀 Starting reel video upload to Cloudinary...');
-      debugPrint('📄 File path: ${videoFile.path}');
-      debugPrint('📄 File name: ${videoFile.name}');
-
-      final cloudinary = CloudinaryPublic(
-        AppConstants.cloudinaryCloudName,
-        AppConstants.cloudinaryUploadPreset,
-        cache: false,
-      );
-
-      final bytes = await videoFile.readAsBytes();
-
-      final response = await cloudinary.uploadFile(
-        CloudinaryFile.fromByteData(
-          bytes.buffer.asByteData(),
-          identifier: videoFile.name,
-          folder: 'reels',
-          publicId: 'reel_${DateTime.now().millisecondsSinceEpoch}',
-          resourceType: CloudinaryResourceType.Video,
-        ),
-      );
-
-      debugPrint('✅ Reel video uploaded successfully');
-      debugPrint('🔗 URL: ${response.secureUrl}');
-
-      return response.secureUrl;
-    } on DioException catch (e) {
-      debugPrint('❌ Error uploading reel video (Dio): ${e.message}');
-      debugPrint('❌ Response data: ${e.response?.data}');
-      return null;
-    } catch (e) {
-      debugPrint('❌ Error uploading reel video: $e');
-      return null;
-    }
+  /// Upload une vidéo de reel
+  /// 
+  /// [videoFile] : Le fichier vidéo à uploader (XFile depuis image_picker)
+  /// 
+  /// Retourne l'URL sécurisée de la vidéo uploadée
+  /// 
+  /// Lance [CloudinaryUploadException] en cas d'erreur
+  static Future<String> uploadReelVideo(XFile videoFile) async {
+    return uploadVideo(videoFile, folder: 'reels');
   }
 
-  /// Delete file from Cloudinary
-  static Future<bool> deleteFile(String publicId) async {
-    try {
-      debugPrint('🗑️ Deleting file from Cloudinary: $publicId');
-
-      // Note: The destroy method is not available in cloudinary_public package
-      // This is a placeholder for future implementation
-      debugPrint(
-        '⚠️ Delete functionality not implemented in cloudinary_public package',
-      );
-
-      debugPrint('✅ File deletion skipped');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Error deleting file: $e');
-      return false;
+  /// Extrait un message d'erreur lisible depuis une DioException
+  static String _extractErrorMessage(DioException e) {
+    if (e.response != null) {
+      final data = e.response!.data;
+      if (data is Map) {
+        return data['error']?.toString() ?? 
+               data['message']?.toString() ?? 
+               e.message ?? 'Unknown error';
+      }
+      return data?.toString() ?? e.message ?? 'Unknown error';
     }
+    return e.message ?? 'Network error';
   }
 }

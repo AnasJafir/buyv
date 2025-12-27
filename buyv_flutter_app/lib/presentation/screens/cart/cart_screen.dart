@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../domain/models/cart_model.dart';
+import '../../../domain/models/order_model.dart';
+import '../../../data/services/order_service.dart';
+import '../../../services/stripe_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
 
 import '../../widgets/require_login_prompt.dart';
 class CartScreen extends StatefulWidget {
@@ -15,11 +22,6 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   bool _isLoading = false;
   String? _error;
-  List<CartItem> _cartItems = [];
-  double _subtotal = 0.0;
-  final double _shipping = 5.0;
-  double _tax = 0.0;
-  double _total = 0.0;
   double _discount = 0.0;
   String? _appliedPromoCode;
   final TextEditingController _promoCodeController = TextEditingController();
@@ -43,11 +45,9 @@ class _CartScreenState extends State<CartScreen> {
     });
 
     try {
-      // Load actual cart data from Firebase or other data source
-      // For now, initialize empty cart
-      _cartItems = [];
-
-      _calculateTotals();
+      // Load cart from CartProvider
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      await cartProvider.loadCart();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -59,28 +59,26 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  void _calculateTotals() {
-    _subtotal = _cartItems.fold(0.0, (sum, item) => 
+  Map<String, double> _calculateTotals(List<CartItem> items) {
+    final subtotal = items.fold(0.0, (sum, item) => 
         sum + ((item.product.discountPrice ?? item.product.price) * item.quantity));
-    _tax = _subtotal * 0.08; // 8% tax
-    _total = _subtotal + _shipping + _tax - _discount;
+    final shipping = items.isEmpty ? 0.0 : 5.0;
+    final tax = subtotal * 0.08; // 8% tax
+    final total = subtotal + shipping + tax - _discount;
+    return {'subtotal': subtotal, 'shipping': shipping, 'tax': tax, 'total': total};
   }
 
   void _updateQuantity(String itemId, int newQuantity) {
-    setState(() {
-      final itemIndex = _cartItems.indexWhere((item) => item.id == itemId);
-      if (itemIndex != -1) {
-        if (newQuantity > 0) {
-          _cartItems[itemIndex] = _cartItems[itemIndex].copyWith(quantity: newQuantity);
-        } else {
-          _cartItems.removeAt(itemIndex);
-        }
-        _calculateTotals();
-      }
-    });
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    
+    if (newQuantity > 0) {
+      cartProvider.updateQuantity(itemId, newQuantity);
+    } else {
+      cartProvider.removeFromCart(itemId);
+    }
   }
 
-  void _applyPromoCode() {
+  void _applyPromoCode(double subtotal) {
     final code = _promoCodeController.text.trim().toUpperCase();
     if (code.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -99,9 +97,8 @@ class _CartScreenState extends State<CartScreen> {
 
     if (validCodes.containsKey(code)) {
       setState(() {
-        _discount = _subtotal * validCodes[code]!;
+        _discount = subtotal * validCodes[code]!;
         _appliedPromoCode = code;
-        _calculateTotals();
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -124,10 +121,224 @@ class _CartScreenState extends State<CartScreen> {
       _discount = 0.0;
       _appliedPromoCode = null;
       _promoCodeController.clear();
-      _calculateTotals();
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Promo code removed')),
+    );
+  }
+
+  Future<void> _processCheckout(List<CartItem> cartItems, double total) async {
+    if (cartItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your cart is empty'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Check if running on desktop (Windows/Linux/macOS) or web
+      final isDesktopOrWeb = kIsWeb || (!Platform.isAndroid && !Platform.isIOS);
+      
+      if (isDesktopOrWeb) {
+        // Desktop/Web: Skip Stripe and create order directly with mock payment
+        await _showMockPaymentDialog(cartItems, total);
+      } else {
+        // Mobile: Use Stripe payment
+        debugPrint('📱 Starting mobile Stripe payment...');
+        await StripeService.instance.makePayment(
+          context: context,
+          amount: total,
+          currency: 'usd',
+          onSuccess: () async {
+            // Payment successful, create order
+            debugPrint('✅ Payment successful callback received, creating order...');
+            await _createOrder(cartItems, total);
+            debugPrint('✅ Order creation completed');
+          },
+          onError: (error) {
+            debugPrint('❌ Payment error callback: $error');
+            setState(() {
+              _isLoading = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Payment failed: $error'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          },
+        );
+        debugPrint('📱 Stripe payment flow completed');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Checkout failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _createOrder(List<CartItem> cartItems, double total) async {
+    try {
+      debugPrint('📦 Starting order creation...');
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final currentUser = authProvider.currentUser;
+      
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      debugPrint('📦 User authenticated: ${currentUser.id}');
+
+      // Calculate totals
+      final totals = _calculateTotals(cartItems);
+      final subtotal = totals['subtotal']!;
+      final shipping = totals['shipping']!;
+      final tax = totals['tax']!;
+      
+      debugPrint('📦 Totals calculated - Subtotal: $subtotal, Shipping: $shipping, Tax: $tax, Total: $total');
+
+      // Prepare order items
+      final orderItems = cartItems.map((item) => OrderItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        productId: item.product.id,
+        productName: item.product.name,
+        productImage: item.product.imageUrls.isNotEmpty ? item.product.imageUrls.first : '',
+        price: item.product.price,
+        quantity: item.quantity,
+        size: item.selectedSize,
+        color: item.selectedColor,
+        attributes: item.selectedAttributes?.map((key, value) => MapEntry(key, value.toString())) ?? {},
+        isPromotedProduct: item.promoterId != null,
+        promoterId: item.promoterId,
+      )).toList();
+
+      debugPrint('📦 Order items prepared: ${orderItems.length} items');
+
+      // Create order model
+      final order = OrderModel(
+        id: '', // Backend will generate
+        userId: currentUser.id,
+        orderNumber: 'ORD-${DateTime.now().millisecondsSinceEpoch}',
+        items: orderItems,
+        status: OrderStatus.pending,
+        subtotal: subtotal,
+        shipping: shipping,
+        tax: tax,
+        total: total,
+        paymentMethod: 'stripe',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        notes: 'Order from BuyV app',
+      );
+
+      debugPrint('📦 Calling OrderService to create order...');
+      // Create order via API
+      final orderId = await OrderService().createOrder(order);
+
+      debugPrint('📦 Order created with ID: $orderId');
+
+      if (orderId == null) {
+        throw Exception('Failed to create order');
+      }
+
+      // Clear cart
+      debugPrint('🛒 Clearing cart...');
+      cartProvider.clearCart();
+      debugPrint('🛒 Cart cleared');
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      debugPrint('✅ Order creation complete, showing success message');
+
+      // Show success and navigate to orders
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order placed successfully! 🎉'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      debugPrint('🚀 Navigating to orders history...');
+      // Navigate to orders history (push instead of go to maintain navigation stack)
+      context.push('/orders-history');
+    } catch (e) {
+      debugPrint('❌ Order creation error: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to create order: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showMockPaymentDialog(List<CartItem> cartItems, double total) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Test Payment'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.payment, size: 64, color: Color(0xFF4CAF50)),
+              const SizedBox(height: 16),
+              Text(
+                'Total: \$${total.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Stripe is not available on desktop.\nThis is a test payment for development.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                setState(() {
+                  _isLoading = false;
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+              ),
+              child: const Text('Confirm Payment', style: TextStyle(color: Colors.white)),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _createOrder(cartItems, total);
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -181,10 +392,10 @@ class _CartScreenState extends State<CartScreen> {
         backgroundColor: Colors.white,
         body: RequireLoginPrompt(
           onLogin: () {
-            Navigator.pushNamed(context, '/login');
+            context.go('/login');
           },
           onSignUp: () {
-            Navigator.pushNamed(context, '/signup');
+            context.go('/signup');
           },
           onDismiss: () {},
           showCloseButton: false,
@@ -214,108 +425,126 @@ class _CartScreenState extends State<CartScreen> {
             ),
             
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    if (_isLoading)
-                      Container(
-                        width: double.infinity,
-                        alignment: Alignment.center,
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF0066CC),
-                        ),
-                      )
-                    else if (_error != null)
-                      Container(
-                        width: double.infinity,
-                        alignment: Alignment.center,
-                        child: Column(
-                          children: [
-                            Text(
-                              'Error: $_error',
+              child: Consumer<CartProvider>(
+                builder: (context, cartProvider, child) {
+                  final cartItems = cartProvider.items;
+                  final totals = _calculateTotals(cartItems);
+                  final subtotal = totals['subtotal']!;
+                  final shipping = totals['shipping']!;
+                  final tax = totals['tax']!;
+                  final total = totals['total']!;
+                  
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        if (_isLoading)
+                          Container(
+                            width: double.infinity,
+                            alignment: Alignment.center,
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF0066CC),
+                            ),
+                          )
+                        else if (_error != null)
+                          Container(
+                            width: double.infinity,
+                            alignment: Alignment.center,
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Error: $_error',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 16,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    _clearError();
+                                    _refreshCart();
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFF0066CC),
+                                  ),
+                                  child: Text(
+                                    'Retry',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (cartItems.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Your cart is empty',
                               style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 16,
+                                fontSize: 18,
+                                color: Colors.grey,
                               ),
                               textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: () {
-                                _clearError();
-                                _refreshCart();
-                              },
+                          )
+                        else ...[
+                          // Cart Items
+                          ...(cartItems.map((item) => _buildCartProductCard(item))),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Cost Summary
+                          _buildCostSummary(subtotal, shipping, tax, total),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // Promo Code Field
+                          _buildPromoCodeField(subtotal),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Checkout Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : () => _processCheckout(cartItems, total),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF0066CC),
+                                backgroundColor: Color(0xFFFF6600),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                elevation: 6,
                               ),
-                              child: Text(
-                                'Retry',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else if (_cartItems.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Your cart is empty',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      )
-                    else ...[
-                      // Cart Items
-                      ...(_cartItems.map((item) => _buildCartProductCard(item))),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Cost Summary
-                      _buildCostSummary(),
-                      
-                      const SizedBox(height: 12),
-                      
-                      // Promo Code Field
-                      _buildPromoCodeField(),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Checkout Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/payment');
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFFFF6600),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            elevation: 6,
-                          ),
-                          child: Text(
-                            'Checkout',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Pay \$${total.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                             ),
                           ),
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 86),
-                    ],
-                  ],
-                ),
+                          
+                          const SizedBox(height: 86),
+                        ],
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -473,7 +702,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCostSummary() {
+  Widget _buildCostSummary(double subtotal, double shipping, double tax, double total) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -487,7 +716,7 @@ class _CartScreenState extends State<CartScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Text('\$${_subtotal.toStringAsFixed(2)}'),
+            Text('\$${subtotal.toStringAsFixed(2)}'),
           ],
         ),
         const SizedBox(height: 4),
@@ -501,7 +730,7 @@ class _CartScreenState extends State<CartScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Text('\$${_shipping.toStringAsFixed(2)}'),
+            Text('\$${shipping.toStringAsFixed(2)}'),
           ],
         ),
         const SizedBox(height: 4),
@@ -515,7 +744,7 @@ class _CartScreenState extends State<CartScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Text('\$${_tax.toStringAsFixed(2)}'),
+            Text('\$${tax.toStringAsFixed(2)}'),
           ],
         ),
         if (_discount > 0) ...[
@@ -561,7 +790,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ),
             Text(
-              '\$${_total.toStringAsFixed(2)}',
+              '\$${total.toStringAsFixed(2)}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
@@ -573,7 +802,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildPromoCodeField() {
+  Widget _buildPromoCodeField(double subtotal) {
     return Column(
       children: [
         Row(
@@ -595,7 +824,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
             const SizedBox(width: 8),
             ElevatedButton(
-              onPressed: _appliedPromoCode == null ? _applyPromoCode : null,
+              onPressed: _appliedPromoCode == null ? () => _applyPromoCode(subtotal) : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF0B74DA),
                 shape: RoundedRectangleBorder(

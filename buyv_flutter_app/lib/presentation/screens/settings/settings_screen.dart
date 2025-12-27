@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 
@@ -36,56 +37,56 @@ class SettingsScreen extends StatelessWidget {
                     context,
                     icon: Icons.local_shipping_outlined,
                     title: 'Orders Track',
-                    onTap: () => Navigator.pushNamed(context, '/orders-track'),
+                    onTap: () => context.go('/orders-track'),
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(
                     context,
                     icon: Icons.history,
                     title: 'Orders history',
-                    onTap: () => Navigator.pushNamed(context, '/orders-history'),
+                    onTap: () => context.go('/orders-history'),
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(
                     context,
                     icon: Icons.visibility_outlined,
                     title: 'Recently viewed',
-                    onTap: () => Navigator.pushNamed(context, '/recently-viewed'),
+                    onTap: () => context.go('/recently-viewed'),
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(
                     context,
                     icon: Icons.credit_card_outlined,
                     title: 'Payment Methods',
-                    onTap: () => Navigator.pushNamed(context, '/payment'),
+                    onTap: () => context.go('/payment'),
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(
                     context,
                     icon: Icons.location_on_outlined,
                     title: 'Location',
-                    onTap: () => Navigator.pushNamed(context, '/location-settings'),
+                    onTap: () => context.go('/location-settings'),
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(
                     context,
                     icon: Icons.language_outlined,
                     title: 'Language',
-                    onTap: () => Navigator.pushNamed(context, '/language-settings'),
+                    onTap: () => context.go('/language-settings'),
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(
                     context,
                     icon: Icons.lock_outline,
                     title: 'Change Password',
-                    onTap: () => Navigator.pushNamed(context, '/change-password'),
+                    onTap: () => context.go('/change-password'),
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(
                     context,
                     icon: Icons.help_outline,
                     title: 'Ask Help',
-                    onTap: () => Navigator.pushNamed(context, '/help'),
+                    onTap: () => context.go('/help'),
                   ),
                   const SizedBox(height: 12),
                   _buildSettingsItem(
@@ -95,11 +96,7 @@ class SettingsScreen extends StatelessWidget {
                     onTap: () async {
                       await context.read<AuthProvider>().signOut();
                       if (context.mounted) {
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          '/login',
-                          (route) => false,
-                        );
+                        context.go('/login');
                       }
                     },
                     isLogout: true,

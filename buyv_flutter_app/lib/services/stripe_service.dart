@@ -21,19 +21,26 @@ class StripeService {
     required BuildContext context,
     required double amount,
     required String currency,
-    required VoidCallback onSuccess,
+    required Future<void> Function() onSuccess,
     required Function(String) onError,
   }) async {
     try {
+      debugPrint('💳 Starting Stripe payment for \$${amount.toStringAsFixed(2)}');
+      
       // 1. Create Payment Intent on Backend
+      debugPrint('💳 Step 1: Creating payment intent...');
       final paymentData = await _createPaymentIntent(amount, currency);
 
       if (paymentData == null) {
+        debugPrint('❌ Payment intent creation failed');
         onError('Failed to create payment intent');
         return;
       }
 
+      debugPrint('✅ Payment intent created: ${paymentData['clientSecret']?.substring(0, 20)}...');
+
       // 2. Initialize Payment Sheet
+      debugPrint('💳 Step 2: Initializing payment sheet...');
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: paymentData['clientSecret'],
@@ -47,18 +54,26 @@ class StripeService {
         ),
       );
 
+      debugPrint('✅ Payment sheet initialized');
+
       // 3. Present Payment Sheet
+      debugPrint('💳 Step 3: Presenting payment sheet...');
       await Stripe.instance.presentPaymentSheet();
 
-      // 4. Success
-      onSuccess();
+      debugPrint('✅ Payment completed successfully!');
+      // 4. Success - AWAIT the callback
+      await onSuccess();
+      debugPrint('✅ onSuccess callback completed');
     } on StripeException catch (e) {
+      debugPrint('❌ Stripe exception: ${e.error.code} - ${e.error.localizedMessage}');
       if (e.error.code == FailureCode.Canceled) {
         // User canceled, do nothing or show toast
+        debugPrint('ℹ️ User canceled payment');
         return;
       }
       onError('Payment Request Failed: ${e.error.localizedMessage}');
     } catch (e) {
+      debugPrint('❌ Unexpected payment error: $e');
       onError('An unexpected error occurred: $e');
     }
   }
@@ -76,6 +91,9 @@ class StripeService {
       // Amount must be integer cents
       final int amountCents = (amount * 100).toInt();
 
+      debugPrint('💳 Requesting payment intent: $amountCents cents');
+      debugPrint('💳 URL: $url');
+
       final response = await http.post(
         url,
         headers: {
@@ -85,14 +103,18 @@ class StripeService {
         body: jsonEncode({'amount': amountCents, 'currency': currency}),
       );
 
+      debugPrint('💳 Backend response: ${response.statusCode}');
+
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+        debugPrint('💳 Payment data received: clientSecret=${data['clientSecret'] != null}, customer=${data['customer']}');
+        return data;
       } else {
-        debugPrint('Backend payment intent error: ${response.body}');
+        debugPrint('❌ Backend payment intent error: ${response.body}');
         return null;
       }
     } catch (e) {
-      debugPrint('Create payment intent exception: $e');
+      debugPrint('❌ Create payment intent exception: $e');
       return null;
     }
   }

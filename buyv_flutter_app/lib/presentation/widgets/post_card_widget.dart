@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../data/models/post_model.dart';
 import '../../services/post_service.dart';
 import 'video_player_widget.dart';
@@ -126,18 +128,48 @@ class _PostCardWidgetState extends State<PostCardWidget> {
             if (widget.post.type == 'reel' || widget.post.type == 'video') ...[
               // Video handling
               if (widget.post.videoUrl.isNotEmpty)
-                AspectRatio(
-                  aspectRatio:
-                      9 /
-                      16, // Reel aspect ratio usually, but could be 1:1 or 4:5
-                  child: Container(
-                    color: Colors.black,
-                    child: VideoPlayerWidget(
-                      videoUrl: widget.post.videoUrl,
-                      autoPlay: false,
-                      looping: true,
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    debugPrint('🎬 PostCard: Rendering video for post ${widget.post.id}');
+                    debugPrint('🎬 Video URL: ${widget.post.videoUrl}');
+                    debugPrint('🎬 Post type: ${widget.post.type}');
+                    return AspectRatio(
+                      aspectRatio:
+                          9 /
+                          16, // Reel aspect ratio usually, but could be 1:1 or 4:5
+                      child: Container(
+                        color: Colors.black,
+                        child: VideoPlayerWidget(
+                          videoUrl: widget.post.videoUrl,
+                          autoPlay: true,
+                          looping: true,
+                        ),
+                      ),
+                    );
+                  },
+                )
+              else
+                Builder(
+                  builder: (context) {
+                    debugPrint('⚠️ PostCard: Video URL is empty for post ${widget.post.id}');
+                    return Container(
+                      color: Colors.black,
+                      height: 400,
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.videocam_off, color: Colors.white54, size: 48),
+                            SizedBox(height: 8),
+                            Text(
+                              'No video available',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
             ] else ...[
               // Image handling
@@ -180,13 +212,18 @@ class _PostCardWidgetState extends State<PostCardWidget> {
                   const SizedBox(width: 16),
                   IconButton(
                     icon: const Icon(Icons.comment_outlined),
-                    onPressed: () {},
+                    onPressed: () {
+                      context.push('/post/${widget.post.id}/comments');
+                    },
                   ),
                   Text('${widget.post.commentsCount}'),
                   const SizedBox(width: 16),
                   IconButton(
                     icon: const Icon(Icons.share_outlined),
-                    onPressed: () {},
+                    onPressed: () {
+                      final shareText = '${widget.post.username} shared a post${widget.post.caption != null ? ': ${widget.post.caption}' : ''}';
+                      Share.share(shareText);
+                    },
                   ),
                   const Spacer(),
                   IconButton(
@@ -195,7 +232,18 @@ class _PostCardWidgetState extends State<PostCardWidget> {
                           ? Icons.bookmark
                           : Icons.bookmark_border,
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            widget.post.isBookmarked
+                                ? 'Removed from bookmarks'
+                                : 'Added to bookmarks',
+                          ),
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

@@ -152,4 +152,13 @@ class PostApiService {
     final data = _parse(res);
     return (data['status'] ?? '') == 'deleted';
   }
+
+  /// Get a single post by UID
+  static Future<Map<String, dynamic>> getPost(String postUid) async {
+    final res = await http.get(
+      _url('/posts/$postUid'),
+      headers: await _authHeaders(),
+    );
+    return _parse(res);
+  }
 }

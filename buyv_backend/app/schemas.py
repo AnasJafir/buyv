@@ -68,11 +68,15 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
     user: UserOut
+    refresh_token: Optional[str] = None
 
 class NotificationCreate(CamelModel):
     user_id: str
@@ -160,12 +164,7 @@ class OrderOut(CamelModel):
     subtotal: float
     shipping: float
     tax: float
-    total: float # totalAmount in Flutter? Flutter model says totalAmount. 
-    # Mapped via alias? No, alias generator handles snake to camel. total -> total. 
-    # Flutter Model: totalAmount. We need Field(alias="totalAmount").
-    # Wait, Flutter OrderModel has totalAmount. 
-    
-    total_amount: float = Field(default=0.0, alias="totalAmount", validation_alias="total")
+    total: float = Field(..., validation_alias="total_amount", serialization_alias="total")
 
     shipping_address: Optional[Address]
     

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from .database import get_db
 from .config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from . import models
-from .schemas import UserCreate, LoginRequest, AuthResponse, UserOut
+from .schemas import UserCreate, LoginRequest, AuthResponse, UserOut, RefreshTokenRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -19,6 +19,15 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt, int((expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)).total_seconds())
+
+
+def create_refresh_token(data: dict):
+    """Create a refresh token with longer expiry (7 days)"""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=7)
+    to_encode.update({"exp": expire, "type": "refresh"})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
 def user_to_out(user: models.User) -> UserOut:
@@ -70,7 +79,8 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     db.refresh(user)
 
     token, expires_in = create_access_token({"sub": user.uid})
-    return AuthResponse(access_token=token, expires_in=expires_in, user=user_to_out(user))
+    refresh_token = create_refresh_token({"sub": user.uid})
+    return AuthResponse(access_token=token, expires_in=expires_in, user=user_to_out(user), refresh_token=refresh_token)
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
@@ -78,7 +88,8 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user or not pwd_context.verify(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token, expires_in = create_access_token({"sub": user.uid})
-    return AuthResponse(access_token=token, expires_in=expires_in, user=user_to_out(user))
+    refresh_token = create_refresh_token({"sub": user.uid})
+    return AuthResponse(access_token=token, expires_in=expires_in, user=user_to_out(user), refresh_token=refresh_token)
 
 from fastapi import Header
 from jose import JWTError
@@ -118,3 +129,55 @@ def get_current_user(authorization: str | None = Header(default=None), db: Sessi
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@router.post("/refresh", response_model=AuthResponse)
+def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """Refresh access token using refresh token"""
+    try:
+        decoded = jwt.decode(payload.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        token_type = decoded.get("type")
+        
+        # Verify it's a refresh token
+        if token_type != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        
+        uid = decoded.get("sub")
+        if not uid:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Get user
+        user = db.query(models.User).filter(models.User.uid == uid).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Generate new tokens
+        new_access_token, expires_in = create_access_token({"sub": user.uid})
+        new_refresh_token = create_refresh_token({"sub": user.uid})
+        
+        return AuthResponse(
+            access_token=new_access_token,
+            expires_in=expires_in,
+            user=user_to_out(user),
+            refresh_token=new_refresh_token
+        )
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+
+# Dependency to get the current authenticated user (optional, for routes that work with or without auth)
+def get_current_user_optional(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> models.User | None:
+    try:
+        if not authorization or not authorization.lower().startswith("bearer "):
+            return None
+        token = authorization.split(" ", 1)[1]
+        if not token:
+            return None
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        uid = payload.get("sub")
+        if not uid:
+            return None
+        user = db.query(models.User).filter(models.User.uid == uid).first()
+        return user
+    except (JWTError, Exception):
+        # Silently return None if token is invalid or missing
+        return None

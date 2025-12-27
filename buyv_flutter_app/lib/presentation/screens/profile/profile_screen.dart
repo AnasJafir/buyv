@@ -1,5 +1,6 @@
 import '../../../data/models/post_model.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../services/auth_api_service.dart';
 import 'package:share_plus/share_plus.dart';
@@ -175,10 +176,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (!authProvider.isAuthenticated || authProvider.currentUser == null) {
           return RequireLoginPrompt(
             onLogin: () {
-              Navigator.pushNamed(context, '/login');
+              context.go('/login');
             },
             onSignUp: () {
-              Navigator.pushNamed(context, '/register');
+              context.go('/register');
             },
             onDismiss: () {
               Navigator.pop(context);
@@ -321,41 +322,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 32.0,
                                     ),
-                                    child: Row(
+                                    child: Column(
                                       children: [
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: () {
-                                              _shareProfile(context, user);
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFFF2F2F2,
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: () {
+                                                  _shareProfile(context, user);
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(
+                                                    0xFFF2F2F2,
+                                                  ),
+                                                  foregroundColor: Colors.black,
+                                                  elevation: 0,
+                                                ),
+                                                child: const Text('Share Profile'),
                                               ),
-                                              foregroundColor: Colors.black,
-                                              elevation: 0,
                                             ),
-                                            child: const Text('Share Profile'),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: () {
-                                              // Edit Profile nav
-                                              Navigator.pushNamed(
-                                                context,
-                                                '/edit_profile',
-                                              );
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFFFF6F00,
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: () {
+                                                  // Edit Profile nav
+                                                  context.push('/edit-profile');
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(
+                                                    0xFFFF6F00,
+                                                  ),
+                                                  foregroundColor: Colors.white,
+                                                  elevation: 0,
+                                                ),
+                                                child: const Text('Edit Profile'),
                                               ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () {
+                                              context.push('/orders-history');
+                                            },
+                                            icon: const Icon(Icons.shopping_bag),
+                                            label: const Text('My Orders'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFF0D3D67),
                                               foregroundColor: Colors.white,
                                               elevation: 0,
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
                                             ),
-                                            child: const Text('Edit Profile'),
                                           ),
                                         ),
                                       ],
@@ -543,9 +562,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
+        debugPrint('📹 Profile Grid: Rendering item ${item.id}');
+        debugPrint('📹 Video URL: ${item.videoUrl}');
+        debugPrint('📹 Thumbnail URL: ${item.thumbnailUrl}');
+        
         return GestureDetector(
           onTap: () {
-            // Navigate to post detail or FeedScreen starting at this index
+            debugPrint('🎯 Profile Grid: Item tapped - ${item.id}');
+            // Navigate to video player or reels screen with this post
+            if (item.type == 'reel' || item.type == 'video') {
+              debugPrint('🎯 Navigating to reels screen with post ${item.id}');
+              context.push('/reels', extra: {'startPostId': item.id});
+            } else {
+              debugPrint('🎯 Opening post detail for ${item.id}');
+              // Could navigate to full post detail screen
+            }
           },
           child: Container(
             decoration: BoxDecoration(

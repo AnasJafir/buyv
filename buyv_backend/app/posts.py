@@ -5,7 +5,7 @@ from datetime import datetime
 
 from .database import get_db
 from .models import User, Post, PostLike
-from .auth import get_current_user
+from .auth import get_current_user, get_current_user_optional
 from .schemas import PostOut, CountResponse, PostCreate
 
 router = APIRouter(prefix="/posts", tags=["posts"])
@@ -207,6 +207,62 @@ def count_user_posts(
         q = q.filter(Post.type == type)
     cnt = q.count()
     return CountResponse(count=cnt)
+
+
+@router.get("/search", response_model=List[PostOut])
+def search_posts(
+    q: str = Query(..., min_length=1, description="Search query"),
+    type: Optional[str] = Query(default=None, description="Filter by post type: reel, product, photo"),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Search posts by caption with pagination"""
+    search_pattern = f"%{q}%"
+    
+    # Base query
+    query = db.query(Post).filter(Post.caption.ilike(search_pattern))
+    
+    # Filter by type if provided
+    if type and type in {"reel", "product", "photo"}:
+        query = query.filter(Post.type == type)
+    
+    # Apply pagination
+    rows = (
+        query.order_by(Post.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    
+    if not rows:
+        return []
+    
+    # Fetch authors
+    user_ids = list({p.user_id for p in rows})
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+    user_map = {u.id: u for u in users}
+    
+    # Fetch likes if user is authenticated
+    liked_post_ids = set()
+    if current_user:
+        post_ids = [r.id for r in rows]
+        my_likes = db.query(PostLike).filter(
+            PostLike.user_id == current_user.id,
+            PostLike.post_id.in_(post_ids)
+        ).all()
+        liked_post_ids = {l.post_id for l in my_likes}
+    
+    # Map to output
+    out = []
+    for r in rows:
+        author = user_map.get(r.user_id)
+        if author:
+            is_liked = r.id in liked_post_ids
+            out.append(_map_post_out(r, author, liked=is_liked))
+    
+    return out
 
 
 @router.post("/{post_uid}/like")

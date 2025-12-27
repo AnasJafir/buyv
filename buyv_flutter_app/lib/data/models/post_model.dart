@@ -41,30 +41,37 @@ class PostModel {
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
+    // Safe int parsing helper
+    int _parseInt(dynamic value, [int defaultValue = 0]) {
+      if (value == null) return defaultValue;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? defaultValue;
+      return defaultValue;
+    }
+
     return PostModel(
-      id: json['id'] ?? '',
-      userId: json['userId'] ?? '', // Expecting String UID now
-      username: json['username'] ?? '',
-      userProfileImage: json['userProfileImage'],
-      isUserVerified: json['isUserVerified'] ?? false,
-      type: json['type'] ?? 'photo',
-      // Backend returns videoUrl (aliased from media_url)
-      videoUrl: json['videoUrl'] ?? '',
-      thumbnailUrl: json['thumbnailUrl'],
-      caption: json['caption'],
-      likesCount: json['likesCount'] ?? 0,
-      commentsCount: json['commentsCount'] ?? 0,
-      sharesCount: json['sharesCount'] ?? 0,
-      viewsCount: json['viewsCount'] ?? 0,
-      isLiked: json['isLiked'] ?? false,
-      isBookmarked: json['isBookmarked'] ?? false,
+      id: json['id']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      userProfileImage: json['userProfileImage']?.toString(),
+      isUserVerified: json['isUserVerified'] == true,
+      type: json['type']?.toString() ?? 'photo',
+      videoUrl: json['videoUrl']?.toString() ?? '',
+      thumbnailUrl: json['thumbnailUrl']?.toString(),
+      caption: json['caption']?.toString(),
+      likesCount: _parseInt(json['likesCount']),
+      commentsCount: _parseInt(json['commentsCount']),
+      sharesCount: _parseInt(json['sharesCount']),
+      viewsCount: _parseInt(json['viewsCount']),
+      isLiked: json['isLiked'] == true,
+      isBookmarked: json['isBookmarked'] == true,
       createdAt: DateTime.parse(
-        json['createdAt'] ?? DateTime.now().toIso8601String(),
+        json['createdAt']?.toString() ?? DateTime.now().toIso8601String(),
       ),
       updatedAt: DateTime.parse(
-        json['updatedAt'] ?? DateTime.now().toIso8601String(),
+        json['updatedAt']?.toString() ?? DateTime.now().toIso8601String(),
       ),
-      metadata: json['metadata'],
+      metadata: json['metadata'] as Map<String, dynamic>?,
     );
   }
 

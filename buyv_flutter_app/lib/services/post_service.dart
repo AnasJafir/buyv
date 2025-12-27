@@ -31,16 +31,19 @@ class PostService {
       }
 
       // Upload media based on type
-      String? mediaUrl;
-      if (type == 'reel') {
-        mediaUrl = await CloudinaryService.uploadReelVideo(file);
-      } else {
-        // Default to image
-        mediaUrl = await CloudinaryService.uploadImage(file);
-      }
-
-      if (mediaUrl == null) {
-        debugPrint('createPost: media upload failed');
+      String mediaUrl;
+      try {
+        if (type == 'reel') {
+          mediaUrl = await CloudinaryService.uploadReelVideo(file);
+        } else {
+          // Default to image
+          mediaUrl = await CloudinaryService.uploadImage(file);
+        }
+      } on CloudinaryUploadException catch (e) {
+        debugPrint('createPost: media upload failed: ${e.message}');
+        return null;
+      } catch (e) {
+        debugPrint('createPost: unexpected error during upload: $e');
         return null;
       }
 

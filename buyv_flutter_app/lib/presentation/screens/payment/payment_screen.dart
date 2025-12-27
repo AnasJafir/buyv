@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../providers/cart_provider.dart';
@@ -105,7 +106,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         );
 
         // Navigate Home
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        context.go('/home');
       }
     } catch (e) {
       if (mounted) {

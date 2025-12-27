@@ -1,12 +1,19 @@
 import 'package:buyv_flutter_app/core/config/environment_config.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+/// Constantes globales de l'application
 class AppConstants {
-  // App Info
+  // ═══════════════════════════════════════════════════════════════════
+  // 📱 INFORMATIONS DE L'APPLICATION
+  // ═══════════════════════════════════════════════════════════════════
+  
   static const String appName = 'BuyV';
   static const String appVersion = '1.0.0';
 
-  // Firebase Collections
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔥 COLLECTIONS FIREBASE (si vous utilisez Firebase)
+  // ═══════════════════════════════════════════════════════════════════
+  
   static const String usersCollection = 'users';
   static const String productsCollection = 'products';
   static const String reelsCollection = 'reels';
@@ -17,43 +24,86 @@ class AppConstants {
   static const String likesCollection = 'likes';
   static const String followsCollection = 'follows';
 
-  // Cloudinary Configuration (Unsigned Upload)
+  // ═══════════════════════════════════════════════════════════════════
+  // ☁️ CONFIGURATION CLOUDINARY (Upload d'images/vidéos)
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /// Nom du cloud Cloudinary
+  /// Trouvez-le sur : https://console.cloudinary.com/console/
   static String cloudinaryCloudName =
-      dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? 'dwtbxzkst';
+      dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? 'dhzllfeno';
+  
+  /// Preset d'upload non signé
+  /// Créez-en un sur : Settings > Upload > Upload presets
   static String cloudinaryUploadPreset =
       dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? 'Ecommerce_BuyV';
-  // Note: API keys not needed for unsigned uploads
+  
+  // Note : Pas besoin de clés API pour les uploads non signés
 
-  // Shared Preferences Keys
+  // ═══════════════════════════════════════════════════════════════════
+  // 💾 CLÉS SHARED PREFERENCES (Stockage local)
+  // ═══════════════════════════════════════════════════════════════════
+  
   static const String userIdKey = 'user_id';
   static const String userTokenKey = 'user_token';
   static const String isLoggedInKey = 'is_logged_in';
   static const String themeKey = 'theme_mode';
   static const String languageKey = 'language';
 
-  // API Endpoints
+  // ═══════════════════════════════════════════════════════════════════
+  // 🌐 ENDPOINTS API
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /// URL de base de l'API (legacy - à supprimer si non utilisé)
+  @Deprecated('Utilisez fastApiBaseUrl à la place')
   static const String baseUrl = 'https://api.buyv.com';
+  
+  /// URL du backend FastAPI (dynamique selon environnement)
   static String get fastApiBaseUrl => EnvironmentConfig.fastApiBaseUrl;
 
-  // CJ Dropshipping API Configuration
+  // ═══════════════════════════════════════════════════════════════════
+  // 🛒 CONFIGURATION CJ DROPSHIPPING
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /// URL de base pour l'API CJ (via proxy CORS)
   static String get cjBaseUrl => EnvironmentConfig.cjBaseUrl;
-  // Note: These are test credentials - replace with your actual CJ API credentials
-  // To get your API key: Login to CJ -> Settings -> API -> Generate API Key
+  
+  /// Clé API CJ Dropshipping
+  /// Obtenez-la sur : https://cj-market.cjdropshipping.com/
+  /// Login > Settings > API > Generate API Key
   static String cjApiKey = dotenv.env['CJ_API_KEY'] ?? '';
-  // If you prefer using CJ account ID instead of email
+  
+  /// ID du compte CJ (alternative à l'email)
   static String cjAccount = dotenv.env['CJ_ACCOUNT_ID'] ?? '';
+  
+  /// Email du compte CJ
   static String cjEmail = dotenv.env['CJ_EMAIL'] ?? '';
 
-  // Pagination
+  // ═══════════════════════════════════════════════════════════════════
+  // 📄 PAGINATION
+  // ═══════════════════════════════════════════════════════════════════
+  
   static const int pageSize = 20;
   static const int reelsPageSize = 10;
 
-  // Video Settings
-  static const int maxVideoLength = 60; // seconds
-  static const int maxVideoSize = 50; // MB
+  // ═══════════════════════════════════════════════════════════════════
+  // 🎥 PARAMÈTRES VIDÉO
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /// Durée maximale d'une vidéo (en secondes)
+  static const int maxVideoLength = 60;
+  
+  /// Taille maximale d'une vidéo (en MB)
+  static const int maxVideoSize = 50;
 
-  // Image Settings
-  static const int maxImageSize = 10; // MB
+  // ═══════════════════════════════════════════════════════════════════
+  // 🖼️ PARAMÈTRES IMAGE
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /// Taille maximale d'une image (en MB)
+  static const int maxImageSize = 10;
+  
+  /// Formats d'image autorisés
   static const List<String> allowedImageFormats = [
     'jpg',
     'jpeg',
@@ -61,21 +111,59 @@ class AppConstants {
     'webp',
   ];
 
-  // Social Features
+  // ═══════════════════════════════════════════════════════════════════
+  // 👥 FONCTIONNALITÉS SOCIALES
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /// Longueur maximale d'un commentaire
   static const int maxCommentLength = 500;
+  
+  /// Longueur maximale de la bio utilisateur
   static const int maxBioLength = 150;
+  
+  /// Longueur maximale du nom d'utilisateur
   static const int maxUsernameLength = 30;
 
-  // E-commerce
+  // ═══════════════════════════════════════════════════════════════════
+  // 🛍️ E-COMMERCE
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /// Montant minimum d'une commande
   static const double minOrderAmount = 10.0;
+  
+  /// Montant maximum d'une commande
   static const double maxOrderAmount = 10000.0;
+  
+  /// Nombre maximum d'articles dans le panier
   static const int maxCartItems = 50;
 
-  // Notification Types
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔔 TYPES DE NOTIFICATIONS
+  // ═══════════════════════════════════════════════════════════════════
+  
   static const String orderNotification = 'order';
   static const String socialNotification = 'social';
   static const String promotionNotification = 'promotion';
   static const String securityNotification = 'security';
   static const String appUpdateNotification = 'app_update';
   static const String generalNotification = 'general';
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔍 HELPERS DE DEBUG
+  // ═══════════════════════════════════════════════════════════════════
+  
+  /// Affiche les constantes principales
+  static void printConstants() {
+    if (EnvironmentConfig.isDebugMode) {
+      print('════════════════════════════════════════');
+      print('📱 CONSTANTES APPLICATION');
+      print('════════════════════════════════════════');
+      print('App : $appName v$appVersion');
+      print('FastAPI : $fastApiBaseUrl');
+      print('CJ API : $cjBaseUrl');
+      print('Cloudinary : $cloudinaryCloudName');
+      print('CJ API Key : ${cjApiKey.isNotEmpty ? "✅ Configurée" : "❌ Manquante"}');
+      print('════════════════════════════════════════');
+    }
+  }
 }

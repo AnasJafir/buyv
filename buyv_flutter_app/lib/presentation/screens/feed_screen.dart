@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../data/models/post_model.dart';
 import '../../services/post_service.dart';
 import '../widgets/post_card_widget.dart';
@@ -135,6 +136,24 @@ class _FeedScreenState extends State<FeedScreen> {
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
+        actions: [
+          // Search Icon
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black),
+            onPressed: () {
+              context.push('/search');
+            },
+            tooltip: 'Search',
+          ),
+          // Notifications Icon
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
+            onPressed: () {
+              context.push('/notifications');
+            },
+            tooltip: 'Notifications',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadPosts,

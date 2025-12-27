@@ -104,12 +104,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }
         }
         
-        // Create updated user model with current timestamp and new profile image
+        // Create updated user model - ONLY MODIFIABLE FIELDS
+        // Backend UserUpdate accepts: displayName, profileImageUrl, bio, interests, settings
+        // DO NOT send: username, email (read-only)
         final updatedUser = currentUser.copyWith(
           displayName: _displayNameController.text.trim(),
-          username: _usernameController.text.trim(),
           bio: _bioController.text.trim(),
-          email: _emailController.text.trim(),
           profileImageUrl: profileImageUrl,
           updatedAt: DateTime.now(),
         );
@@ -341,12 +341,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   
                   const SizedBox(height: 20),
                   
-                  // Username Field
+                  // Username Field (READ-ONLY - Cannot be changed)
                   CustomTextField(
                     controller: _usernameController,
                     labelText: 'Username',
-                    hintText: 'Enter your username',
+                    hintText: 'Username cannot be changed',
                     prefixIcon: Icons.alternate_email,
+                    enabled: false, // Username is read-only
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your username';
@@ -372,13 +373,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   
                   const SizedBox(height: 20),
                   
-                  // Email Field
+                  // Email Field (READ-ONLY - Cannot be changed)
                   CustomTextField(
                     controller: _emailController,
                     labelText: 'Email',
-                    hintText: 'Enter your email',
+                    hintText: 'Email cannot be changed',
                     prefixIcon: Icons.email,
                     keyboardType: TextInputType.emailAddress,
+                    enabled: false, // Email is read-only
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/notification_service.dart';
 import '../../../data/models/notification_model.dart';
@@ -250,17 +251,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     switch (notification.type) {
       case 'order':
         if (notification.data.containsKey('orderId')) {
-          Navigator.pushNamed(context, '/orders-track');
+          context.go('/orders-track');
         }
         break;
       case 'promotion':
         if (notification.data.containsKey('productId')) {
           // Navigate to product details
-          Navigator.pushNamed(context, '/product-detail');
+          context.go('/product-detail');
         }
         break;
       case 'commission':
-        Navigator.pushNamed(context, '/earnings');
+        context.go('/earnings');
         break;
     }
   }

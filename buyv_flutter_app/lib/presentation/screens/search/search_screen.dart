@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../services/api/search_api_service.dart';
+import '../../../domain/models/user_model.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -10,8 +13,15 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final List<String> _searchResults = [];
+  
+  List<UserModel> _userResults = [];
   bool _isSearching = false;
+  String _currentQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -19,26 +29,41 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
-  void _performSearch(String query) {
+  Future<void> _performSearch(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _userResults.clear();
+        _currentQuery = '';
+        _isSearching = false;
+      });
+      return;
+    }
+
     setState(() {
       _isSearching = true;
+      _currentQuery = query.trim();
     });
 
-    // Simulate search delay
-    Future.delayed(const Duration(milliseconds: 500), () {
+    try {
+      // Search only users
+      final usersData = await SearchApiService.searchUsers(query: _currentQuery);
+      setState(() {
+        _userResults = usersData.map((data) => UserModel.fromJson(data)).toList();
+        _isSearching = false;
+      });
+    } catch (e) {
       setState(() {
         _isSearching = false;
-        _searchResults.clear();
-        if (query.isNotEmpty) {
-          // Add some mock search results
-          _searchResults.addAll([
-            'Product 1 - $query',
-            'Product 2 - $query',
-            'Product 3 - $query',
-          ]);
-        }
       });
-    });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error searching: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -52,69 +77,117 @@ class _SearchScreenState extends State<SearchScreen> {
           onPressed: () => Navigator.pop(context),
           icon: const Icon(Icons.arrow_back, color: Colors.black),
         ),
-        title: SearchBar(
+        title: TextField(
           controller: _searchController,
-          hintText: 'Search products...',
-          leading: const Icon(Icons.search),
-          onChanged: _performSearch,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Search users...',
+            border: InputBorder.none,
+            hintStyle: TextStyle(color: Colors.grey),
+          ),
           onSubmitted: _performSearch,
+          onChanged: (value) {
+            // Debounce search
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (_searchController.text == value) {
+                _performSearch(value);
+              }
+            });
+          },
         ),
+        actions: [
+          if (_searchController.text.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.clear, color: Colors.black),
+              onPressed: () {
+                _searchController.clear();
+                setState(() {
+                  _userResults.clear();
+                  _currentQuery = '';
+                });
+              },
+            ),
+        ],
       ),
       body: Column(
         children: [
           if (_isSearching)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: CircularProgressIndicator(),
-            ),
+            const LinearProgressIndicator(),
           Expanded(
-            child: _searchResults.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Start typing to search for products',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _searchResults.length,
-                    itemBuilder: (context, index) {
-                      return ListTile(
-                        leading: const Icon(Icons.shopping_bag),
-                        title: Text(_searchResults[index]),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.add_shopping_cart),
-                          onPressed: () {
-                            // Add to cart functionality
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${_searchResults[index]} added to cart'),
-                              ),
-                            );
-                          },
-                        ),
-                        onTap: () {
-                          // Navigate to product details
-                        },
-                      );
-                    },
-                  ),
+            child: _buildResults(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildResults() {
+    if (_currentQuery.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search,
+              size: 64,
+              color: Colors.grey,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Start typing to search for users',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_isSearching) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_userResults.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_outline, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No users found',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: _userResults.length,
+      itemBuilder: (context, index) {
+        final user = _userResults[index];
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundImage: user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
+                ? NetworkImage(user.profileImageUrl!)
+                : null,
+            child: user.profileImageUrl == null || user.profileImageUrl!.isEmpty
+                ? const Icon(Icons.person)
+                : null,
+          ),
+          title: Text(user.displayName ?? user.username),
+          subtitle: Text('@${user.username}'),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            // Navigate to user profile
+            context.push('/user/${user.id}');
+          },
+        );
+      },
     );
   }
 }

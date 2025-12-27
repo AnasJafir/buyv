@@ -100,8 +100,24 @@ class AuthApiService {
       final token = data['access_token'] as String;
       final expiresIn = (data['expires_in'] ?? 3600) as int;
       final expiryTime = DateTime.now().add(Duration(seconds: expiresIn));
-      // Backend currently doesn't issue refresh tokens; store empty safely
-      await SecureTokenManager.storeAccessToken(token: token, refreshToken: '', expiryTime: expiryTime);
+      final refreshToken = data['refresh_token'] as String? ?? '';
+      await SecureTokenManager.storeAccessToken(token: token, refreshToken: refreshToken, expiryTime: expiryTime);
     }
+  }
+
+  /// Refresh access token using refresh token
+  static Future<Map<String, dynamic>> refreshToken(String refreshToken) async {
+    final res = await http.post(
+      _url('/auth/refresh'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'refreshToken': refreshToken,
+      }),
+    );
+    final data = _parseResponse(res);
+    await _storeTokenFromAuthResponse(data);
+    return data;
   }
 }

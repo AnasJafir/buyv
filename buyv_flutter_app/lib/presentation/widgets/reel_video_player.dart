@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cached_video_player/cached_video_player.dart';
+import 'package:video_player/video_player.dart';
 import '../../domain/models/reel_model.dart';
 
 class ReelVideoPlayer extends StatefulWidget {
@@ -22,7 +22,7 @@ class ReelVideoPlayer extends StatefulWidget {
 
 class _ReelVideoPlayerState extends State<ReelVideoPlayer>
     with WidgetsBindingObserver {
-  CachedVideoPlayerController? _controller;
+  VideoPlayerController? _controller;
   bool _isInitialized = false;
   bool _hasError = false;
   String? _errorMessage;
@@ -80,51 +80,59 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer>
     }
   }
 
-  void _initializeVideo() {
+  void _initializeVideo() async {
     setState(() {
       _hasError = false;
       _errorMessage = null;
     });
 
     try {
-      // Try to use the actual video URL first
-      if (widget.reel.videoUrl.isNotEmpty &&
-          (widget.reel.videoUrl.startsWith('http') ||
-              widget.reel.videoUrl.startsWith('https'))) {
-        _controller = CachedVideoPlayerController.network(widget.reel.videoUrl);
-      } else {
-        // Fallback to sample video asset
-        _controller = CachedVideoPlayerController.asset(
-          'assets/videos/sample_reel.mp4',
-        );
+      debugPrint('🎬 ReelVideoPlayer: Initializing video');
+      debugPrint('🎬 Video URL: ${widget.reel.videoUrl}');
+      
+      // Validate video URL
+      if (widget.reel.videoUrl.isEmpty) {
+        debugPrint('❌ Video URL is empty!');
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Empty video URL';
+        });
+        return;
       }
 
-      _controller!
-          .initialize()
-          .then((_) {
-            if (mounted) {
-              setState(() {
-                _isInitialized = true;
-              });
+      if (!widget.reel.videoUrl.startsWith('http://') && 
+          !widget.reel.videoUrl.startsWith('https://')) {
+        debugPrint('❌ Invalid video URL format: ${widget.reel.videoUrl}');
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Invalid URL format';
+        });
+        return;
+      }
 
-              _controller!.setLooping(true);
+      // Create and initialize controller ONCE
+      _controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.reel.videoUrl),
+      );
 
-              // Auto-play if this is the current reel and should be playing
-              if (widget.isCurrentReel && widget.isPlaying) {
-                _controller!.play();
-              }
-            }
-          })
-          .catchError((error) {
-            if (mounted) {
-              setState(() {
-                _hasError = true;
-                _errorMessage = error.toString();
-              });
-            }
-            debugPrint('Error initializing video: $error');
-          });
+      await _controller!.initialize();
+
+      if (mounted) {
+        debugPrint('✅ Reel video initialized successfully');
+        setState(() {
+          _isInitialized = true;
+        });
+
+        _controller!.setLooping(true);
+
+        // Auto-play if this is the current reel and should be playing
+        if (widget.isCurrentReel && widget.isPlaying) {
+          _controller!.play();
+          debugPrint('▶️ Auto-playing current reel');
+        }
+      }
     } catch (e) {
+      debugPrint('❌ Error initializing reel video: $e');
       if (mounted) {
         setState(() {
           _hasError = true;
@@ -222,7 +230,7 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer>
                 child: VideoProgressIndicator(
                   _controller!,
                   allowScrubbing: false,
-                  colors: const VideoProgressColors(
+                  colors: VideoProgressColors(
                     playedColor: Colors.white,
                     backgroundColor: Colors.white24,
                     bufferedColor: Colors.white38,
@@ -243,7 +251,7 @@ class _ReelVideoPlayerState extends State<ReelVideoPlayer>
     return Center(
       child: AspectRatio(
         aspectRatio: _controller!.value.aspectRatio,
-        child: CachedVideoPlayer(_controller!),
+        child: VideoPlayer(_controller!),
       ),
     );
   }

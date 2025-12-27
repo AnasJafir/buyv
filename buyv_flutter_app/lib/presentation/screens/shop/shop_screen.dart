@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../services/cj_dropshipping_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -171,13 +172,24 @@ class _ShopScreenState extends State<ShopScreen> {
               ),
             ),
           ),
+          IconButton(
+            onPressed: () {
+              context.push('/orders-history');
+            },
+            icon: const Icon(
+              Icons.receipt_long,
+              size: 28,
+              color: AppTheme.primaryColor,
+            ),
+            tooltip: 'My Orders',
+          ),
           Consumer<CartProvider>(
             builder: (context, cartProvider, child) {
               return Stack(
                 children: [
                   IconButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/cart');
+                      context.go('/cart');
                     },
                     icon: Image.asset(
                       'assets/icons/ic_cart.png',

@@ -1,3 +1,21 @@
+// Helper function to safely convert any numeric value to double
+double _safeToDouble(dynamic value) {
+  if (value == null) return 0.0;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) {
+    return double.tryParse(value) ?? 0.0;
+  }
+  return 0.0;
+}
+
+// Helper function to safely convert any value to String
+String _safeToString(dynamic value) {
+  if (value == null) return '';
+  if (value is String) return value;
+  return value.toString();
+}
+
 class CJProduct {
   final String pid;
   final String productName;
@@ -70,20 +88,20 @@ class CJProduct {
 
   factory CJProduct.fromJson(Map<String, dynamic> json) {
     return CJProduct(
-      pid: json['pid'] ?? '',
-      productName: json['productName'] ?? '',
-      productNameEn: json['productNameEn'] ?? '',
-      productSku: json['productSku'] ?? '',
-      sellPrice: (json['sellPrice'] ?? 0).toDouble(),
-      originalPrice: (json['originalPrice'] ?? 0).toDouble(),
-      productImage: json['productImage'] ?? '',
-      productImages: List<String>.from(json['productImages'] ?? []),
-      categoryId: json['categoryId'] ?? '',
-      categoryName: json['categoryName'] ?? '',
-      description: json['description'] ?? '',
-      descriptionEn: json['descriptionEn'] ?? '',
+      pid: _safeToString(json['pid']),
+      productName: _safeToString(json['productName']),
+      productNameEn: _safeToString(json['productNameEn']),
+      productSku: _safeToString(json['productSku']),
+      sellPrice: _safeToDouble(json['sellPrice']),
+      originalPrice: _safeToDouble(json['originalPrice']),
+      productImage: _safeToString(json['productImage']),
+      productImages: (json['productImages'] as List<dynamic>?)?.map((e) => _safeToString(e)).toList() ?? [],
+      categoryId: _safeToString(json['categoryId']),
+      categoryName: _safeToString(json['categoryName']),
+      description: _safeToString(json['description']),
+      descriptionEn: _safeToString(json['descriptionEn']),
       sellCount: json['sellCount'] ?? 0,
-      rating: (json['rating'] ?? 0).toDouble(),
+      rating: _safeToDouble(json['rating']),
       reviewCount: json['reviewCount'] ?? 0,
       variants: (json['variants'] as List<dynamic>?)
               ?.map((v) => CJProductVariant.fromJson(v))
@@ -91,18 +109,18 @@ class CJProduct {
           [],
       specifications: json['specifications'] ?? {},
       isAvailable: json['isAvailable'] ?? true,
-      sourceUrl: json['sourceUrl'] ?? '',
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+      sourceUrl: _safeToString(json['sourceUrl']),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? '') ?? DateTime.now(),
       // New fields
       deliveryTime: json['deliveryTime'],
       verifiedWarehouse: json['verifiedWarehouse'],
-      customizationVersion: json['customizationVersion'],
+      customizationVersion: _safeToString(json['customizationVersion']),
       hasInventory: json['hasInventory'],
-      countryCode: json['countryCode'],
-      weight: json['weight']?.toDouble(),
-      dimensions: json['dimensions'],
-      tags: json['tags'] != null ? List<String>.from(json['tags']) : null,
+      countryCode: _safeToString(json['countryCode']),
+      weight: _safeToDouble(json['weight']),
+      dimensions: _safeToString(json['dimensions']),
+      tags: (json['tags'] as List<dynamic>?)?.map((e) => _safeToString(e)).toList(),
       shippingInfo: json['shippingInfo'],
       supplierInfo: json['supplierInfo'],
     );
@@ -253,13 +271,13 @@ class CJProductVariant {
 
   factory CJProductVariant.fromJson(Map<String, dynamic> json) {
     return CJProductVariant(
-      vid: json['vid'] ?? '',
-      variantName: json['variantName'] ?? '',
-      variantNameEn: json['variantNameEn'] ?? '',
-      variantSku: json['variantSku'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-      image: json['image'] ?? '',
-      attributes: Map<String, String>.from(json['attributes'] ?? {}),
+      vid: _safeToString(json['vid']),
+      variantName: _safeToString(json['variantName']),
+      variantNameEn: _safeToString(json['variantNameEn']),
+      variantSku: _safeToString(json['variantSku']),
+      price: _safeToDouble(json['price']),
+      image: _safeToString(json['image']),
+      attributes: (json['attributes'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, _safeToString(v))) ?? {},
       stock: json['stock'] ?? 0,
       isAvailable: json['isAvailable'] ?? true,
     );

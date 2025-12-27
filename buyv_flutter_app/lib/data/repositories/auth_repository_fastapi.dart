@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../../domain/models/user_model.dart';
-import '../../constants/app_constants.dart';
 import '../../services/auth_api_service.dart';
 import '../../services/security/secure_token_manager.dart';
 
@@ -67,7 +66,16 @@ class AuthRepositoryFastApi {
   }
 
   Future<UserModel> updateUserData(UserModel updated) async {
-    final res = await AuthApiService.updateUser(updated.id, updated.toJson());
+    // Only send fields that can be updated (backend UserUpdate schema)
+    final updatePayload = {
+      'displayName': updated.displayName,
+      'profileImageUrl': updated.profileImageUrl,
+      'bio': updated.bio,
+      'interests': updated.interests,
+      'settings': updated.settings,
+    };
+    
+    final res = await AuthApiService.updateUser(updated.id, updatePayload);
     return UserModel.fromJson(res);
   }
 }

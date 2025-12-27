@@ -1,0 +1,787 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    GUIDE DE TEST - APPLICATION BUYV                          ║
+║                         26 Décembre 2025                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📋 INFORMATIONS DE TEST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Backend: DÉJÀ LANCÉ (FastAPI sur http://localhost:8000)
+✅ Frontend: À lancer dans l'autre workspace Flutter
+
+🔐 COMPTE DE TEST:
+   Email: test@buyv.com
+   Mot de passe: Test123456!
+
+📝 Note: Si ce compte n'existe pas, utilisez vos identifiants existants
+         ou créez un nouveau compte via l'écran d'inscription.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         SCÉNARIO 1 : FLUX UTILISATEUR COMPLET                ║
+║                    Test des fonctionnalités principales                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎯 OBJECTIF:
+   Tester le parcours utilisateur complet : Login → Navigation → Posts → 
+   Commentaires → Search → Profile → Orders
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ÉTAPE 1 : AUTHENTIFICATION ET LOGIN
+────────────────────────────────────────────────────────────────────────────
+
+1.1 ✅ Lancer l'application Flutter
+    → L'écran de Splash devrait apparaître
+    → Attendre la transition automatique
+
+1.2 ✅ Connexion au compte
+    a) Sur l'écran de Login/Onboarding, cliquer sur "Login"
+    b) Entrer l'email: test@buyv.com
+    c) Entrer le mot de passe: Test123456!
+    d) Cliquer sur "Login"
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Redirection vers l'écran Home/Feed
+      - Message de bienvenue ou indicateur de connexion réussie
+      - Accès aux fonctionnalités authentifiées
+
+    ❌ EN CAS D'ERREUR:
+      - Vérifier que le backend est lancé (http://localhost:8000)
+      - Vérifier les credentials
+      - Vérifier les logs Flutter pour les erreurs d'API
+
+
+ÉTAPE 2 : NAVIGATION ET EXPLORATION DU FEED
+────────────────────────────────────────────────────────────────────────────
+
+2.1 ✅ Explorer le Feed Principal
+    a) Observer les posts affichés (reels, photos, products)
+    b) Scroller verticalement pour charger plus de posts
+    c) Vérifier que la pagination fonctionne (chargement automatique)
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Posts affichés avec images/vidéos
+      - Informations utilisateur (username, avatar)
+      - Compteurs de likes et commentaires visibles
+      - Chargement fluide avec indicateur de progression
+
+2.2 ✅ Tester la Navigation Bottom Bar
+    a) Cliquer sur l'icône "Home" (🏠)
+    b) Cliquer sur l'icône "Reels" (🎬)
+    c) Cliquer sur l'icône "Shop" (🛍️)
+    d) Cliquer sur l'icône "Cart" (🛒)
+    e) Cliquer sur l'icône "Profile" (👤)
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Changement d'écran fluide
+      - Icône active mise en évidence
+      - Contenu approprié affiché pour chaque écran
+
+
+ÉTAPE 3 : INTERACTION AVEC LES POSTS
+────────────────────────────────────────────────────────────────────────────
+
+3.1 ✅ Liker un Post
+    a) Trouver un post dans le feed
+    b) Cliquer sur l'icône "❤️" (Like)
+    c) Observer le changement de couleur (rouge si liked)
+    d) Vérifier que le compteur augmente de +1
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Icône devient rouge/remplie
+      - Compteur incrémenté immédiatement
+      - Animation de like (si implémentée)
+
+3.2 ✅ Unliker un Post
+    a) Sur le même post, cliquer à nouveau sur "❤️"
+    b) Observer le retour à l'état initial
+    c) Vérifier que le compteur diminue de -1
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Icône redevient vide/grise
+      - Compteur décrémenté
+
+
+ÉTAPE 4 : SYSTÈME DE COMMENTAIRES (NOUVELLE FONCTIONNALITÉ)
+────────────────────────────────────────────────────────────────────────────
+
+4.1 ✅ Ajouter un Commentaire
+    a) Sur un post, cliquer sur l'icône "💬" (Commentaires)
+    b) Une zone de texte devrait apparaître (ou écran de commentaires)
+    c) Taper un commentaire: "Test commentaire depuis l'app! 🎉"
+    d) Cliquer sur "Envoyer" ou "Post Comment"
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Commentaire envoyé avec succès
+      - Message de confirmation
+      - Commentaire visible immédiatement dans la liste
+      - Compteur de commentaires incrémenté
+
+4.2 ✅ Afficher les Commentaires d'un Post
+    a) Cliquer sur l'icône "💬" ou sur le compteur de commentaires
+    b) Observer la liste des commentaires
+    c) Scroller pour voir plus de commentaires (pagination)
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Liste des commentaires affichée
+      - Pour chaque commentaire: username, photo profil, texte, date
+      - Ordre chronologique (plus récent en haut)
+      - Pagination fonctionnelle (20 commentaires par page)
+
+
+ÉTAPE 5 : RECHERCHE (SEARCH API - NOUVELLE FONCTIONNALITÉ)
+────────────────────────────────────────────────────────────────────────────
+
+5.1 ✅ Rechercher des Utilisateurs
+    a) Cliquer sur l'icône "🔍" (Search) dans la bottom bar
+    b) Dans la barre de recherche, taper un nom d'utilisateur
+       Exemple: "john" ou "test"
+    c) Observer les résultats en temps réel (debouncing 500ms)
+    d) Basculer sur l'onglet "Users" si nécessaire
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Résultats affichés après 500ms de pause
+      - Liste d'utilisateurs correspondants
+      - Chaque utilisateur avec: photo, username, display name
+      - Possibilité de cliquer pour voir le profil
+
+5.2 ✅ Rechercher des Posts
+    a) Dans le même écran de recherche
+    b) Basculer sur l'onglet "Posts"
+    c) Taper des mots-clés (ex: "product", "reel", "photo")
+    d) Observer les résultats
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Posts correspondants affichés
+      - Recherche dans les captions/descriptions
+      - Possibilité de filtrer par type (reel/product/photo)
+      - Cliquer sur un post pour voir les détails
+
+5.3 ✅ Tester le Clear Search
+    a) Après avoir tapé une recherche
+    b) Cliquer sur l'icône "❌" (Clear)
+    c) Observer que la recherche est réinitialisée
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Champ de recherche vidé
+      - Résultats effacés
+      - État initial restauré
+
+
+ÉTAPE 6 : PROFIL UTILISATEUR
+────────────────────────────────────────────────────────────────────────────
+
+6.1 ✅ Accéder à Mon Profil
+    a) Cliquer sur l'icône "Profile" (👤) dans la bottom bar
+    b) Observer les informations affichées
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Photo de profil
+      - Username et display name
+      - Bio (si configurée)
+      - Stats: Nombre de posts, followers, following
+      - Grille de posts publiés
+
+6.2 ✅ Modifier le Profil
+    a) Sur l'écran de profil, cliquer sur "Edit Profile"
+    b) Modifier le display name ou la bio
+    c) Cliquer sur "Save" ou "Sauvegarder"
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Modifications enregistrées
+      - Message de confirmation
+      - Changements visibles immédiatement
+
+6.3 ✅ Voir le Profil d'un Autre Utilisateur
+    a) Depuis le feed ou les résultats de recherche
+    b) Cliquer sur un username ou avatar
+    c) Observer le profil de l'utilisateur
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Profil affiché avec toutes les infos
+      - Bouton "Follow" ou "Following" visible
+      - Grille de posts de l'utilisateur
+
+
+ÉTAPE 7 : HISTORIQUE DES COMMANDES
+────────────────────────────────────────────────────────────────────────────
+
+7.1 ✅ Accéder à l'Historique
+    a) Cliquer sur "Profile" puis sur "Settings" (⚙️)
+    b) Cliquer sur "Orders History" ou "Historique des commandes"
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Liste des commandes passées
+      - Pour chaque commande: numéro, date, montant, statut
+      - Statuts colorés (vert=delivered, orange=processing, etc.)
+
+7.2 ✅ Filtrer les Commandes
+    a) Sur l'écran Orders History
+    b) Utiliser les filtres en haut (All, Delivered, Processing, etc.)
+    c) Observer le filtrage en temps réel
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Commandes filtrées selon le statut sélectionné
+      - Mise à jour immédiate de la liste
+
+7.3 ✅ Voir les Détails d'une Commande
+    a) Cliquer sur une commande dans la liste
+    b) Observer les détails complets
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Produits commandés avec images et quantités
+      - Adresse de livraison
+      - Informations de paiement
+      - Tracking number (si disponible)
+      - Status timeline
+
+
+ÉTAPE 8 : NOTIFICATIONS
+────────────────────────────────────────────────────────────────────────────
+
+8.1 ✅ Accéder aux Notifications
+    a) Cliquer sur l'icône "🔔" (Notifications)
+    b) Observer la liste des notifications
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Liste de notifications (likes, commentaires, follows)
+      - Badge avec nombre de non-lues
+      - Chaque notification avec: icône, message, temps écoulé
+
+8.2 ✅ Marquer comme Lue
+    a) Cliquer sur une notification
+    b) Observer le changement visuel
+    c) Navigation vers l'élément concerné (post, profil, etc.)
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Notification marquée comme lue
+      - Navigation vers le contenu approprié
+      - Badge décrémenté
+
+
+ÉTAPE 9 : DÉCONNEXION
+────────────────────────────────────────────────────────────────────────────
+
+9.1 ✅ Se Déconnecter
+    a) Aller dans "Profile" → "Settings"
+    b) Scroller jusqu'en bas
+    c) Cliquer sur "Logout" ou "Déconnexion"
+    d) Confirmer la déconnexion
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Redirection vers l'écran de login
+      - Token effacé
+      - État de l'app réinitialisé
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     SCÉNARIO 2 : TEST DES DEEP LINKS                         ║
+║              Test de la navigation profonde et des partages                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎯 OBJECTIF:
+   Tester les nouveaux deep links (buyv://) pour la navigation directe
+   vers des posts, profils utilisateurs et produits
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PRÉREQUIS:
+────────────────────────────────────────────────────────────────────────────
+✅ Application installée sur appareil/émulateur
+✅ Utilisateur connecté (Email: test@buyv.com)
+✅ Avoir noté des IDs de test:
+   - Un post_uid (exemple: p_abc123)
+   - Un user_uid (exemple: johndoe)
+   - Un product_id (exemple: prod_456)
+
+
+ÉTAPE 1 : PRÉPARER LES IDS DE TEST
+────────────────────────────────────────────────────────────────────────────
+
+1.1 📝 Récupérer un Post ID
+    a) Dans l'app, ouvrir un post quelconque
+    b) Observer l'URL ou l'ID affiché (si visible)
+    c) Noter le post_uid
+    
+    💡 ALTERNATIVE: 
+       Vérifier dans le backend/DB pour obtenir un post_uid valide
+       Exemple: p_1234567890
+
+1.2 📝 Récupérer un User ID
+    a) Visiter un profil utilisateur
+    b) Noter le username ou user_uid
+    
+    💡 EXEMPLE:
+       Si username est "johndoe", l'uid peut être "johndoe" ou un UUID
+
+1.3 📝 Récupérer un Product ID  
+    a) Dans la section Shop, choisir un produit
+    b) Noter le product_id
+    
+    💡 EXEMPLE:
+       prod_123, prod_cj_456789, etc.
+
+
+ÉTAPE 2 : TEST DEEP LINK VERS POST
+────────────────────────────────────────────────────────────────────────────
+
+2.1 🔗 Tester depuis le Terminal (Android)
+    
+    a) Ouvrir PowerShell ou Terminal
+    
+    b) Lancer la commande:
+    
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://post/[POST_ID]" com.buyv.app
+    
+    Remplacer [POST_ID] par l'ID réel
+    Exemple: buyv://post/p_1234567890
+    
+    ✓ RÉSULTAT ATTENDU:
+      - L'application s'ouvre automatiquement
+      - Navigation directe vers l'écran PostDetailScreen
+      - Post affiché avec tous ses détails
+      - Possibilité de liker, commenter, partager
+
+2.2 🔗 Tester depuis l'App (Partage)
+    
+    a) Dans l'app, sur un post, cliquer sur "Share" (icône partage)
+    b) Observer le lien généré : "buyv://post/[ID]"
+    c) Copier le lien
+    d) Coller dans une note ou message
+    e) Cliquer sur le lien
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Redirection vers l'app
+      - Post affiché correctement
+
+2.3 ✅ Vérifier les Détails du Post
+    
+    Sur l'écran PostDetailScreen, vérifier:
+    - ✓ Image/Vidéo du post affichée
+    - ✓ Caption/Description
+    - ✓ Informations utilisateur (username, avatar)
+    - ✓ Compteurs (likes, commentaires)
+    - ✓ Bouton retour fonctionnel
+    - ✓ Bouton partage fonctionnel
+    - ✓ Date de création affichée
+
+
+ÉTAPE 3 : TEST DEEP LINK VERS PROFIL UTILISATEUR
+────────────────────────────────────────────────────────────────────────────
+
+3.1 🔗 Tester depuis le Terminal (Android)
+    
+    Commande:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://user/[USER_ID]" com.buyv.app
+    
+    Exemple: buyv://user/johndoe
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Application ouverte sur UserProfileScreen
+      - Profil utilisateur affiché
+      - Toutes les informations visibles
+
+3.2 ✅ Vérifier le Profil Utilisateur
+    
+    Sur l'écran UserProfileScreen, vérifier:
+    - ✓ Photo de profil / Avatar
+    - ✓ Display name et @username
+    - ✓ Bio (si présente)
+    - ✓ Stats: posts count, followers count, following count
+    - ✓ Bouton "Follow" ou "Following"
+    - ✓ Grille de posts (3 colonnes)
+    - ✓ Possibilité de cliquer sur un post
+    - ✓ Bouton partage en haut à droite
+
+3.3 🔗 Tester le Partage de Profil
+    
+    a) Sur un profil, cliquer sur le bouton "Share"
+    b) Observer le lien: "buyv://user/[USER_ID]"
+    c) Copier et tester le lien
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Lien généré correctement
+      - Possibilité de partager via réseaux sociaux/messages
+
+
+ÉTAPE 4 : TEST DEEP LINK VERS PRODUIT
+────────────────────────────────────────────────────────────────────────────
+
+4.1 🔗 Tester depuis le Terminal (Android)
+    
+    Commande:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://product/[PRODUCT_ID]?name=T-Shirt&price=29.99&category=Clothing" com.buyv.app
+    
+    Exemple complet:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://product/prod_123?name=Cool%20Shirt&price=29.99" com.buyv.app
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Application ouverte sur ProductDetailScreen
+      - Produit affiché avec les paramètres passés
+      - Prix et nom corrects
+
+4.2 ✅ Vérifier les Détails du Produit
+    
+    Sur ProductDetailScreen, vérifier:
+    - ✓ Image du produit
+    - ✓ Nom du produit
+    - ✓ Prix affiché
+    - ✓ Catégorie
+    - ✓ Description (si disponible)
+    - ✓ Boutons: Add to Cart, Buy Now
+    - ✓ Options: taille, couleur (si applicable)
+
+
+ÉTAPE 5 : TEST NAVIGATION SCREENS VIA DEEP LINKS
+────────────────────────────────────────────────────────────────────────────
+
+5.1 🔗 Tester Navigation vers Home
+    Commande:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://home" com.buyv.app
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Redirection vers l'écran Home/Feed
+
+5.2 🔗 Tester Navigation vers Search
+    Commande:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://search" com.buyv.app
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Écran de recherche affiché
+
+5.3 🔗 Tester Navigation vers Profile
+    Commande:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://profile" com.buyv.app
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Profil de l'utilisateur connecté affiché
+
+5.4 🔗 Tester Navigation vers Orders History
+    Commande:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://orders-history" com.buyv.app
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Écran d'historique des commandes
+
+5.5 🔗 Tester Navigation vers Cart
+    Commande:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://cart" com.buyv.app
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Panier d'achats affiché
+
+
+ÉTAPE 6 : TEST DE NAVIGATION GO_ROUTER INTERNE
+────────────────────────────────────────────────────────────────────────────
+
+6.1 ✅ Tester context.go() depuis l'App
+    
+    Si vous avez accès au code ou à un écran de debug:
+    
+    a) Ajouter temporairement ce bouton dans un écran:
+    
+    ElevatedButton(
+      onPressed: () => context.go('/post/test123'),
+      child: Text('Test Deep Link'),
+    )
+    
+    b) Cliquer sur le bouton
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Navigation vers PostDetailScreen avec ID "test123"
+      - Si le post n'existe pas: message d'erreur approprié
+
+6.2 ✅ Tester Navigation Named Routes
+    
+    Code test:
+    context.goNamed('post-detail', pathParameters: {'uid': 'test456'});
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Navigation correcte
+      - Paramètre passé correctement
+
+
+ÉTAPE 7 : TEST GESTION D'ERREURS
+────────────────────────────────────────────────────────────────────────────
+
+7.1 ❌ Tester avec ID Invalide
+    
+    a) Utiliser un deep link avec ID inexistant:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://post/FAKE_ID_9999" com.buyv.app
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Application ouverte
+      - Message d'erreur: "Post not found" ou "Failed to load post"
+      - Bouton "Retry" fonctionnel
+      - Bouton "Back" pour retourner
+
+7.2 ❌ Tester Route Inexistante
+    
+    Commande:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://nonexistent" com.buyv.app
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Page d'erreur 404 personnalisée
+      - Message: "Page not found"
+      - Bouton "Go Home" pour retourner à l'accueil
+
+
+ÉTAPE 8 : TEST AUTHENTIFICATION AVEC DEEP LINKS
+────────────────────────────────────────────────────────────────────────────
+
+8.1 🔐 Tester Deep Link sans Authentification
+    
+    a) Se déconnecter de l'app (Logout)
+    b) Lancer un deep link:
+    adb shell am start -W -a android.intent.action.VIEW -d "buyv://profile" com.buyv.app
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Redirection automatique vers l'écran de login
+      - Après login, navigation vers la destination initiale (profile)
+
+8.2 🔐 Vérifier la Redirection Post-Login
+    
+    a) Noter l'URL destination (ex: buyv://orders-history)
+    b) Se déconnecter
+    c) Cliquer sur le deep link
+    d) Se connecter
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Après login, redirection vers orders-history automatiquement
+
+
+ÉTAPE 9 : TESTER IOS (SI DISPONIBLE)
+────────────────────────────────────────────────────────────────────────────
+
+Pour tester sur iOS Simulator:
+
+9.1 🍎 Commande iOS
+    
+    xcrun simctl openurl booted "buyv://post/[POST_ID]"
+    xcrun simctl openurl booted "buyv://user/[USER_ID]"
+    xcrun simctl openurl booted "buyv://home"
+    
+    ✓ RÉSULTAT ATTENDU:
+      - Identique au comportement Android
+      - Navigation fluide
+      - Deep links fonctionnels
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        CHECKLIST FINALE DE VALIDATION                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+SCÉNARIO 1 - FLUX UTILISATEUR:
+────────────────────────────────────────────────────────────────────────────
+[ ] 1. Login réussi avec credentials de test
+[ ] 2. Feed principal affiche les posts
+[ ] 3. Navigation bottom bar fonctionnelle (5 onglets)
+[ ] 4. Like/Unlike posts fonctionne
+[ ] 5. Ajout de commentaires OK
+[ ] 6. Affichage des commentaires avec pagination
+[ ] 7. Recherche utilisateurs fonctionne
+[ ] 8. Recherche posts fonctionne
+[ ] 9. Clear search fonctionne
+[ ] 10. Profil utilisateur s'affiche correctement
+[ ] 11. Modification du profil OK
+[ ] 12. Profil autre utilisateur accessible
+[ ] 13. Historique commandes affiché
+[ ] 14. Filtres commandes fonctionnels
+[ ] 15. Détails commande complets
+[ ] 16. Notifications affichées
+[ ] 17. Marquer notification comme lue OK
+[ ] 18. Déconnexion et nettoyage état
+
+SCÉNARIO 2 - DEEP LINKS:
+────────────────────────────────────────────────────────────────────────────
+[ ] 1. Deep link vers post fonctionne
+[ ] 2. PostDetailScreen affiche correctement
+[ ] 3. Partage de post génère bon lien
+[ ] 4. Deep link vers profil utilisateur fonctionne
+[ ] 5. UserProfileScreen affiche correctement
+[ ] 6. Bouton Follow/Following fonctionnel
+[ ] 7. Grille de posts cliquable
+[ ] 8. Deep link vers produit fonctionne
+[ ] 9. Paramètres query (price, name) passés correctement
+[ ] 10. Navigation screens via deep links OK
+[ ] 11. buyv://home fonctionne
+[ ] 12. buyv://search fonctionne
+[ ] 13. buyv://profile fonctionne
+[ ] 14. buyv://orders-history fonctionne
+[ ] 15. buyv://cart fonctionne
+[ ] 16. Gestion erreur ID invalide OK
+[ ] 17. Page 404 pour routes inexistantes
+[ ] 18. Redirection login si non authentifié
+[ ] 19. Retour à destination après login
+
+FONCTIONNALITÉS RÉCEMMENT AJOUTÉES:
+────────────────────────────────────────────────────────────────────────────
+[ ] ✨ GET Single Post (PostApiService.getPost) testé
+[ ] ✨ Refresh Token System (si token expire)
+[ ] ✨ Deep Linking complet (buyv://)
+[ ] ✨ Go Router navigation
+[ ] ✨ PostDetailScreen nouveau écran
+[ ] ✨ UserProfileScreen nouveau écran
+[ ] ✨ DeepLinkHandler service
+[ ] ✨ Comments API (ajout + liste)
+[ ] ✨ Search API (users + posts)
+[ ] ✨ Orders History avec filtres
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            RÉSOLUTION DE PROBLÈMES                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+PROBLÈME 1: "Connection refused" ou erreur réseau
+────────────────────────────────────────────────────────────────────────────
+SOLUTION:
+  1. Vérifier que le backend est lancé: http://localhost:8000/health
+  2. Pour émulateur Android: Utiliser 10.0.2.2:8000 au lieu de localhost:8000
+  3. Vérifier AppConstants.fastApiBaseUrl dans le code Flutter
+  4. Désactiver proxy/VPN si nécessaire
+
+PROBLÈME 2: Deep links ne fonctionnent pas
+────────────────────────────────────────────────────────────────────────────
+SOLUTION:
+  1. Vérifier AndroidManifest.xml (intent-filter configuré)
+  2. Réinstaller l'app: flutter clean && flutter run
+  3. Vérifier que go_router est correctement configuré
+  4. Consulter les logs: flutter logs
+
+PROBLÈME 3: Page 404 ou "Route not found"
+────────────────────────────────────────────────────────────────────────────
+SOLUTION:
+  1. Vérifier que la route existe dans app_router.dart
+  2. Vérifier l'orthographe du path
+  3. Consulter les logs du router (debugLogDiagnostics: true)
+
+PROBLÈME 4: Token expiré / Session perdue
+────────────────────────────────────────────────────────────────────────────
+SOLUTION:
+  1. Se reconnecter via l'écran de login
+  2. Tester le refresh token (devrait se faire automatiquement)
+  3. Vérifier SecureTokenManager
+  4. En dernier recours: Clear data de l'app et reconnecter
+
+PROBLÈME 5: Commentaires ne s'affichent pas
+────────────────────────────────────────────────────────────────────────────
+SOLUTION:
+  1. Vérifier que le post_uid est correct
+  2. Vérifier l'endpoint backend: GET /comments/{post_uid}
+  3. Vérifier les logs Flutter pour les erreurs
+  4. Tester manuellement l'API avec Postman
+
+PROBLÈME 6: Recherche ne retourne aucun résultat
+────────────────────────────────────────────────────────────────────────────
+SOLUTION:
+  1. Vérifier qu'il y a des données dans la DB
+  2. Tester avec des termes de recherche différents
+  3. Vérifier le debouncing (attendre 500ms après la saisie)
+  4. Consulter les logs d'API
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         COMMANDES UTILES POUR LES TESTS                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+FLUTTER:
+────────────────────────────────────────────────────────────────────────────
+flutter run                          # Lancer l'app
+flutter clean                        # Nettoyer le cache
+flutter logs                         # Voir les logs en temps réel
+flutter devices                      # Lister les appareils disponibles
+
+ANDROID (ADB):
+────────────────────────────────────────────────────────────────────────────
+adb devices                          # Lister les appareils connectés
+adb logcat                          # Voir tous les logs Android
+adb logcat | grep -i flutter       # Filtrer les logs Flutter
+adb shell am start -W -a android.intent.action.VIEW -d "buyv://home" com.buyv.app
+
+IOS (SIMULATOR):
+────────────────────────────────────────────────────────────────────────────
+xcrun simctl list                   # Lister les simulateurs
+xcrun simctl openurl booted "buyv://home"
+
+BACKEND (VÉRIFICATION):
+────────────────────────────────────────────────────────────────────────────
+curl http://localhost:8000/health   # Health check
+curl http://localhost:8000/docs     # Ouvrir Swagger UI dans navigateur
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              NOTES IMPORTANTES                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📌 ORDRE DE TEST RECOMMANDÉ:
+   1. Lancer d'abord le Scénario 1 (flux utilisateur complet)
+   2. Noter les IDs pendant les tests du Scénario 1
+   3. Puis lancer le Scénario 2 (deep links) avec les IDs réels
+
+📌 TEMPS ESTIMÉ:
+   - Scénario 1: 15-20 minutes
+   - Scénario 2: 10-15 minutes
+   - Total: 30-35 minutes
+
+📌 LOGS À SURVEILLER:
+   - Logs Flutter pour les erreurs d'UI
+   - Logs backend pour les erreurs d'API
+   - Logs réseau pour les problèmes de connexion
+
+📌 DONNÉES DE TEST:
+   - Créer quelques posts de test si le feed est vide
+   - Avoir au moins 2-3 utilisateurs pour tester le follow
+   - Ajouter des commentaires sur différents posts
+
+📌 APRÈS LES TESTS:
+   - Noter tous les bugs trouvés
+   - Capturer des screenshots si nécessaire
+   - Documenter les comportements inattendus
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         RAPPORT DE TEST (À REMPLIR)                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Date du test: _______________
+Heure: _______________
+Testeur: _______________
+Appareil: _______________
+OS Version: _______________
+
+SCÉNARIO 1 - STATUS:
+  [ ] PASSÉ  [ ] ÉCHOUÉ  [ ] PARTIELLEMENT PASSÉ
+
+SCÉNARIO 2 - STATUS:
+  [ ] PASSÉ  [ ] ÉCHOUÉ  [ ] PARTIELLEMENT PASSÉ
+
+BUGS TROUVÉS:
+1. _________________________________________________________________
+2. _________________________________________________________________
+3. _________________________________________________________________
+
+FONCTIONNALITÉS EXCELLENTES:
+1. _________________________________________________________________
+2. _________________________________________________________________
+
+AMÉLIORATIONS SUGGÉRÉES:
+1. _________________________________________________________________
+2. _________________________________________________________________
+
+NOTES ADDITIONNELLES:
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        ✅ FIN DU GUIDE DE TEST
+                     Bonne chance avec vos tests ! 🚀
+═══════════════════════════════════════════════════════════════════════════════

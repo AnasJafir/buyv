@@ -289,7 +289,7 @@ class CartProvider extends ChangeNotifier {
         await saveCart();
         
         if (kDebugMode) {
-          print('✅ Discount code applied: $code (${_discountPercentage}% = \$${_discountAmount.toStringAsFixed(2)})');
+          print('✅ Discount code applied: $code ($_discountPercentage% = \$${_discountAmount.toStringAsFixed(2)})');
         }
         
         notifyListeners();

@@ -85,9 +85,9 @@ class OrderModel {
 
   factory OrderModel.fromMap(Map<String, dynamic> map, String documentId) {
     return OrderModel(
-      id: map['id'] ?? documentId,
-      userId: map['userId'] ?? '',
-      orderNumber: map['orderNumber'] ?? '',
+      id: map['id']?.toString() ?? documentId,
+      userId: map['userId']?.toString() ?? '',
+      orderNumber: map['orderNumber']?.toString() ?? '',
       items: (map['items'] as List<dynamic>?)
               ?.map((item) => OrderItem.fromMap(item))
               .toList() ??
@@ -100,13 +100,13 @@ class OrderModel {
       shippingAddress: map['shippingAddress'] != null
           ? Address.fromMap(map['shippingAddress'])
           : null,
-      paymentMethod: map['paymentMethod'] ?? '',
+      paymentMethod: map['paymentMethod']?.toString() ?? '',
       createdAt: _parseDate(map['createdAt']) ?? DateTime.now(),
       updatedAt: _parseDate(map['updatedAt']) ?? DateTime.now(),
       estimatedDelivery: _parseDate(map['estimatedDelivery']),
-      trackingNumber: map['trackingNumber'],
-      notes: map['notes'] ?? '',
-      promoterId: map['promoterId'],
+      trackingNumber: map['trackingNumber']?.toString(),
+      notes: map['notes']?.toString() ?? '',
+      promoterId: map['promoterId']?.toString(),
     );
   }
 
@@ -231,17 +231,17 @@ class OrderItem {
 
   factory OrderItem.fromMap(Map<String, dynamic> map) {
     return OrderItem(
-      id: map['id'] ?? '',
-      productId: map['productId'] ?? '',
-      productName: map['productName'] ?? '',
-      productImage: map['productImage'] ?? '',
+      id: map['id']?.toString() ?? '',
+      productId: map['productId']?.toString() ?? '',
+      productName: map['productName']?.toString() ?? '',
+      productImage: map['productImage']?.toString() ?? '',
       price: (map['price'] ?? 0).toDouble(),
       quantity: map['quantity'] ?? 1,
-      size: map['size'],
-      color: map['color'],
-      attributes: Map<String, String>.from(map['attributes'] ?? {}),
+      size: map['size']?.toString(),
+      color: map['color']?.toString(),
+      attributes: (map['attributes'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v?.toString() ?? '')) ?? {},
       isPromotedProduct: map['isPromotedProduct'] ?? false,
-      promoterId: map['promoterId'],
+      promoterId: map['promoterId']?.toString(),
     );
   }
 

@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../widgets/reel_video_player.dart';
 import '../../widgets/reel_interactions.dart';
 import '../../widgets/buy_bottom_sheet.dart';
 import '../../../domain/models/reel_model.dart';
+import '../../../data/models/post_model.dart';
 import '../../../domain/models/comment_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../constants/app_constants.dart';
+import '../../../services/security/secure_token_manager.dart';
 import '../../widgets/require_login_prompt.dart';
 import '../shop/shop_screen.dart';
 import '../../../services/api/comment_api_service.dart';
@@ -160,32 +166,124 @@ class _ReelsScreenState extends State<ReelsScreen>
         _errorMessage = null;
       });
 
-      // Load reels from API
-      await Future.delayed(const Duration(seconds: 1));
+      // Load reels from backend API
+      final token = await SecureTokenManager.getAccessToken();
 
-      // Initialize empty reels list - no dummy data
-      final List<ReelModel> reels = [];
+      if (token == null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Not authenticated';
+        });
+        return;
+      }
 
-      setState(() {
-        _reels = reels;
-        _isLoading = false;
+      // Fetch reels/videos from posts API
+      final response = await http.get(
+        Uri.parse('${AppConstants.fastApiBaseUrl}/posts/feed?limit=50'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-        // Navigate to target reel if specified
-        if (widget.targetReelId != null) {
-          final targetIndex = _reels.indexWhere(
-            (reel) => reel.id == widget.targetReelId,
-          );
-          if (targetIndex >= 0) {
-            _currentIndex = targetIndex;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _pageController.animateToPage(
-                targetIndex,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        debugPrint('📦 Response type: ${responseData.runtimeType}');
+        
+        // Handle both formats: direct list or object with 'posts' key
+        List<dynamic> postsJson;
+        
+        if (responseData is List) {
+          // Direct list format
+          postsJson = responseData;
+          debugPrint('📦 Direct list format: ${postsJson.length} items');
+        } else if (responseData is Map && responseData.containsKey('posts')) {
+          // Object with 'posts' key
+          postsJson = responseData['posts'] as List;
+          debugPrint('📦 Object format with posts key: ${postsJson.length} items');
+        } else {
+          debugPrint('❌ Unexpected response format: ${responseData.runtimeType}');
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Invalid API response format';
+          });
+          return;
+        }
+        
+        debugPrint('📦 Found ${postsJson.length} posts in feed');
+        
+        // Convert PostModel to ReelModel for reels/videos only
+        final reels = <ReelModel>[];
+        
+        for (var i = 0; i < postsJson.length; i++) {
+          try {
+            final postJson = postsJson[i];
+            debugPrint('🔍 Processing post $i: type=${postJson['type']}, videoUrl=${postJson['videoUrl']}');
+            
+            final post = PostModel.fromJson(postJson);
+            
+            // Only include reels/videos with valid URLs
+            if ((post.type == 'reel' || post.type == 'video') && 
+                post.videoUrl.isNotEmpty) {
+              final reel = ReelModel(
+                id: post.id,
+                userId: post.userId,
+                username: post.username,
+                userProfileImage: post.userProfileImage ?? '',
+                isUserVerified: post.isUserVerified,
+                videoUrl: post.videoUrl,
+                thumbnailUrl: post.thumbnailUrl,
+                caption: post.caption ?? '',
+                hashtags: [],
+                likesCount: post.likesCount,
+                commentsCount: post.commentsCount,
+                sharesCount: post.sharesCount,
+                viewsCount: post.viewsCount,
+                isLiked: post.isLiked,
+                isBookmarked: post.isBookmarked,
+                createdAt: post.createdAt,
+                updatedAt: post.updatedAt,
+                duration: 0.0,
               );
-            });
+              reels.add(reel);
+              debugPrint('✅ Added reel: ${reel.id}');
+            }
+          } catch (e, stackTrace) {
+            debugPrint('⚠️ Error converting post $i to reel: $e');
+            debugPrint('Stack trace: $stackTrace');
+            // Skip problematic posts
+            continue;
           }
         }
+
+        debugPrint('✅ Loaded ${reels.length} reels from ${postsJson.length} total posts');
+
+        setState(() {
+          _reels = reels;
+          _isLoading = false;
+
+          // Navigate to target reel if specified
+          if (widget.targetReelId != null) {
+            final targetIndex = _reels.indexWhere(
+              (reel) => reel.id == widget.targetReelId,
+            );
+            if (targetIndex >= 0) {
+              _currentIndex = targetIndex;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _pageController.animateToPage(
+                  targetIndex,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              });
+            }
+          }
+        });
+      } else {
+        throw Exception('Failed to load reels: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading reels: $e');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
       });
     } catch (e) {
       setState(() {
@@ -338,6 +436,15 @@ Download our app to see more amazing products!
           );
         }
       });
+      
+      // Reload comments to ensure we have the latest from server
+      Future.microtask(() {
+        setState(() {
+          _comments.clear();
+          _commentsOffset = 0;
+        });
+        _loadComments(reelId);
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -364,10 +471,14 @@ Download our app to see more amazing products!
   }
 
   Widget _buildCommentsSheet(String reelId) {
-    // Load comments when sheet opens
-    if (_comments.isEmpty && !_commentsLoading) {
-      Future.microtask(() => _loadComments(reelId));
-    }
+    // Load comments when sheet opens - always reload to get latest
+    Future.microtask(() {
+      setState(() {
+        _comments.clear();
+        _commentsOffset = 0;
+      });
+      _loadComments(reelId);
+    });
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
@@ -618,7 +729,7 @@ Download our app to see more amazing products!
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/login');
+                context.go('/login');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
@@ -799,11 +910,7 @@ Download our app to see more amazing products!
                       onShare: () => _shareReel(reel),
                       onBookmark: () => _toggleBookmark(reel.id),
                       onProfile: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/profile',
-                          arguments: {'userId': reel.userId},
-                        );
+                        context.go('/user/${reel.userId}');
                       },
                       onCart: () => _onCartPressed(reel),
                       isInCart:
@@ -880,7 +987,7 @@ Download our app to see more amazing products!
 
                         // Handle tab navigation like Kotlin
                         if (tab == 'Explore') {
-                          Navigator.pushNamed(context, '/search_reels');
+                          context.go('/search_reels');
                         } else {
                           // Load reels for selected tab
                           _loadReelsForTab(tab);
@@ -930,7 +1037,7 @@ Download our app to see more amazing products!
                 // Search Icon
                 IconButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/search_reels');
+                    context.go('/search_reels');
                   },
                   icon: Icon(
                     Icons.search,
@@ -1064,11 +1171,11 @@ Download our app to see more amazing products!
             child: RequireLoginPrompt(
               onLogin: () {
                 Navigator.pop(ctx);
-                Navigator.pushNamed(context, '/login');
+                context.go('/login');
               },
               onSignUp: () {
                 Navigator.pop(ctx);
-                Navigator.pushNamed(context, '/signup');
+                context.go('/signup');
               },
               onDismiss: () {
                 Navigator.pop(ctx);
@@ -1108,7 +1215,7 @@ Download our app to see more amazing products!
               quantity: qty,
               promoterId: promoterId,
             );
-            Navigator.pushNamed(context, '/cart');
+            context.go('/cart');
           },
         );
       },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import 'package:go_router/go_router.dart';
 import '../../../data/services/order_service.dart';
 import '../../../domain/models/order_model.dart';
 import '../../providers/auth_provider.dart';
@@ -446,6 +447,6 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
   }
 
   void _trackOrder(String orderId) {
-    Navigator.pushNamed(context, '/orders-track');
+    context.go('/orders-track');
   }
 }

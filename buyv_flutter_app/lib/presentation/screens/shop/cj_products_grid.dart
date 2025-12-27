@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../domain/models/cj_product_model.dart';
+import '../../../domain/models/product_model.dart';
+import '../../../domain/models/cart_model.dart';
+import '../../providers/cart_provider.dart';
 import '../profile/add_post_screen.dart';
+import 'cj_cart_helper.dart';
 
 class CJProductsGrid extends StatelessWidget {
   final List<CJProduct> products;
@@ -158,30 +163,58 @@ class CJProductsGrid extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    // Promote Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 28,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          _showProductPromotionDialog(context, product);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CAF50),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 28,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                addCJProductToCart(context, product);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF6F00),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: const Icon(
+                                Icons.shopping_cart,
+                                size: 16,
+                              ),
+                            ),
                           ),
-                          padding: EdgeInsets.zero,
                         ),
-                        child: const Text(
-                          'Promote',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: SizedBox(
+                            height: 28,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                _showProductPromotionDialog(context, product);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4CAF50),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: const Text(
+                                'Promote',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -312,5 +345,9 @@ class CJProductsGrid extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _addToCart(BuildContext context, CJProduct product) {
+    addCJProductToCart(context, product);
   }
 }

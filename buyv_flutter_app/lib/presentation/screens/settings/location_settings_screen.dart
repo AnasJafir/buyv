@@ -209,7 +209,7 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey[800],

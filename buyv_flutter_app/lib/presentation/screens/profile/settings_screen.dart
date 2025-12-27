@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -36,7 +37,7 @@ class SettingsScreen extends StatelessWidget {
               title: 'Orders Track',
               onTap: () {
                 // Navigate to orders track
-                Navigator.pushNamed(context, '/orders-track');
+                context.go('/orders-track');
               },
             ),
             const SizedBox(height: 12),
@@ -46,7 +47,7 @@ class SettingsScreen extends StatelessWidget {
               title: 'Orders history',
               onTap: () {
                 // Navigate to orders history
-                Navigator.pushNamed(context, '/orders-history');
+                context.go('/orders-history');
               },
             ),
             const SizedBox(height: 12),
@@ -56,7 +57,7 @@ class SettingsScreen extends StatelessWidget {
               title: 'Recently viewed',
               onTap: () {
                 // Navigate to recently viewed
-                Navigator.pushNamed(context, '/recently-viewed');
+                context.go('/recently-viewed');
               },
             ),
             const SizedBox(height: 12),
@@ -66,7 +67,7 @@ class SettingsScreen extends StatelessWidget {
               title: 'Payment Methods',
               onTap: () {
                 // Navigate to payment methods
-                Navigator.pushNamed(context, '/payment-methods');
+                context.go('/payment-methods');
               },
             ),
             const SizedBox(height: 12),
@@ -76,7 +77,7 @@ class SettingsScreen extends StatelessWidget {
               title: 'Location',
               onTap: () {
                 // Navigate to location settings
-                Navigator.pushNamed(context, '/location-settings');
+                context.go('/location-settings');
               },
             ),
             const SizedBox(height: 12),
@@ -86,7 +87,7 @@ class SettingsScreen extends StatelessWidget {
               title: 'Language',
               onTap: () {
                 // Navigate to language settings
-                Navigator.pushNamed(context, '/language-settings');
+                context.go('/language-settings');
               },
             ),
             const SizedBox(height: 12),
@@ -96,7 +97,7 @@ class SettingsScreen extends StatelessWidget {
               title: 'Change Password',
               onTap: () {
                 // Navigate to change password
-                Navigator.pushNamed(context, '/change-password');
+                context.go('/change-password');
               },
             ),
             const SizedBox(height: 12),
@@ -106,7 +107,7 @@ class SettingsScreen extends StatelessWidget {
               title: 'Ask Help',
               onTap: () {
                 // Navigate to help
-                Navigator.pushNamed(context, '/help');
+                context.go('/help');
               },
             ),
             const SizedBox(height: 12),

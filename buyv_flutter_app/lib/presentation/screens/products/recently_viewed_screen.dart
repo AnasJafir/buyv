@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class RecentlyViewedScreen extends StatefulWidget {
   const RecentlyViewedScreen({super.key});
@@ -116,7 +117,7 @@ class _RecentlyViewedScreenState extends State<RecentlyViewedScreen> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () => Navigator.pushNamed(context, '/shop'),
+            onPressed: () => context.go('/shop'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
@@ -316,10 +317,9 @@ class _RecentlyViewedScreenState extends State<RecentlyViewedScreen> {
   }
 
   void _viewProduct(Map<String, dynamic> product) {
-    Navigator.pushNamed(
-      context,
+    context.go(
       '/product_detail',
-      arguments: {
+      extra: {
         'productId': product['id'],
         'productName': product['name'],
         'productImage': product['image'],

@@ -10,6 +10,7 @@ from .commissions import router as commissions_router
 from .posts import router as posts_router
 from .comments import router as comments_router
 from .payments import router as payments_router
+from .cleanup import router as cleanup_router
 
 # Create tables if not exist
 Base.metadata.create_all(bind=engine)
@@ -53,4 +54,6 @@ app.include_router(orders_router)
 app.include_router(commissions_router)
 app.include_router(posts_router)
 app.include_router(comments_router)
+app.include_router(payments_router)
+app.include_router(cleanup_router)
 app.include_router(payments_router)

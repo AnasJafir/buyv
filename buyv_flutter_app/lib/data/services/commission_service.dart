@@ -78,16 +78,27 @@ class CommissionService {
   // Summary calculation moved client-side
 
   /// Stream user commissions for real-time updates
+  /// Note: Polls every 30 seconds to avoid excessive API calls
   Stream<List<CommissionModel>> streamUserCommissions(String userId) async* {
+    // Initial load
+    try {
+      final list = await _api.listMyCommissions();
+      yield list.map(_mapToCommissionModel).toList();
+    } catch (e) {
+      debugPrint('Error loading commissions: $e');
+      yield [];
+    }
+    
+    // Poll every 30 seconds instead of 5
     while (true) {
+      await Future.delayed(const Duration(seconds: 30));
       try {
         final list = await _api.listMyCommissions();
         yield list.map(_mapToCommissionModel).toList();
       } catch (e) {
         debugPrint('Error polling commissions: $e');
-        yield [];
+        // Don't yield empty list on error, keep last state
       }
-      await Future.delayed(const Duration(seconds: 5));
     }
   }
 
