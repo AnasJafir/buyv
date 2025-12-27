@@ -3,6 +3,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:app_links/app_links.dart';
+import 'dart:async';
 
 import 'data/repositories/auth_repository_fastapi.dart';
 import 'presentation/providers/auth_provider.dart';
@@ -14,6 +16,7 @@ import 'core/theme/app_theme.dart';
 import 'services/secure_storage_service.dart';
 import 'services/security_audit_service.dart';
 import 'core/router/app_router.dart';
+import 'services/deep_link_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,8 +66,81 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDeepLinks();
+  }
+
+  Future<void> _initDeepLinks() async {
+    debugPrint('🔗 Initializing deep link listener...');
+    
+    // Handle initial link when app starts (cold start)
+    try {
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        debugPrint('🔗 Initial deep link detected: $initialUri');
+        // Delay to ensure router is ready
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _handleDeepLink(initialUri);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error getting initial link: $e');
+    }
+
+    // Handle links while app is running (warm start)
+    _linkSubscription = _appLinks.uriLinkStream.listen(
+      (uri) {
+        debugPrint('🔗 Deep link received while app running: $uri');
+        if (mounted) {
+          _handleDeepLink(uri);
+        }
+      },
+      onError: (err) {
+        debugPrint('❌ Deep link error: $err');
+      },
+    );
+    
+    debugPrint('✅ Deep link listener initialized');
+  }
+
+  void _handleDeepLink(Uri uri) {
+    // Get the router context
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final context = navigatorKey.currentContext;
+    
+    if (context != null) {
+      DeepLinkHandler.handleDeepLink(context, uri);
+    } else {
+      debugPrint('⚠️ Context not available yet, retrying...');
+      Future.delayed(const Duration(milliseconds: 300), () {
+        final retryContext = navigatorKey.currentContext;
+        if (retryContext != null) {
+          DeepLinkHandler.handleDeepLink(retryContext, uri);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
