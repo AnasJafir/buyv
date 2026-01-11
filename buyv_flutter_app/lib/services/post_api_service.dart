@@ -97,6 +97,20 @@ class PostApiService {
     return _parseList(res);
   }
 
+  // Get posts by IDs (for bookmarked posts from provider)
+  static Future<List<Map<String, dynamic>>> getPostsByIds(
+    List<String> postIds,
+  ) async {
+    if (postIds.isEmpty) return [];
+    
+    final res = await http.post(
+      _url('/posts/by-ids'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'post_ids': postIds}),
+    );
+    return _parseList(res);
+  }
+
   static Future<int> getPostsCount(String uid, {String? type}) async {
     final q = type != null ? '?type=$type' : '';
     final res = await http.get(

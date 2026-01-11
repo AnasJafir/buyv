@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/auth_provider.dart' as auth_provider;
+import '../../providers/bookmark_provider.dart';
 import '../../widgets/require_login_prompt.dart';
 import '../../../domain/models/user_model.dart';
 import '../../../services/user_service.dart';
@@ -47,6 +48,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   
   // ✅ NOUVEAU: Track quels tabs sont chargés
   final Set<int> _loadedTabs = {};
+  
+  // ✅ NOUVEAU: Track bookmark changes
+  Set<String> _previousBookmarks = {};
 
   @override
   void initState() {
@@ -68,6 +72,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    
+    // Listen to post updates
     final userProvider = Provider.of<UserProvider>(context);
     if (_lastPostUpdate != null &&
         userProvider.lastPostUpdate != _lastPostUpdate) {
@@ -78,6 +84,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _loadProfileData();
     }
     _lastPostUpdate ??= userProvider.lastPostUpdate;
+    
+    // ✅ NOUVEAU: Listen to bookmark changes
+    final bookmarkProvider = Provider.of<BookmarkProvider>(context);
+    final currentBookmarks = bookmarkProvider.bookmarkedPostIds;
+    
+    // Si on est sur le tab "Saved" (index 2) et que les bookmarks ont changé
+    if (_selectedTabIndex == 2 && 
+        currentBookmarks != _previousBookmarks) {
+      _previousBookmarks = Set.from(currentBookmarks);
+      
+      // Recharge uniquement le tab Saved
+      _reloadSavedTab();
+    }
   }
 
   Future<void> _loadProfileData() async {
@@ -191,9 +210,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 1: // Products
         RemoteLogger.logBackendCall('/posts/user/$userId/products', actionId: actionId);
         return await _postService.getUserProducts(userId);
-      case 2: // Saved
-        RemoteLogger.logBackendCall('/bookmarks/user/$userId', actionId: actionId);
-        return await _postService.getUserBookmarkedPosts(userId);
+      case 2: // Saved - ✅ UTILISE BookmarkProvider au lieu de l'API
+        final bookmarkProvider = Provider.of<BookmarkProvider>(context, listen: false);
+        final bookmarkedIds = bookmarkProvider.bookmarkedPostIds.toList();
+        
+        if (bookmarkedIds.isEmpty) {
+          return [];
+        }
+        
+        // Charge les posts complets pour les IDs bookmarkés
+        RemoteLogger.logBackendCall('/posts/by-ids', actionId: actionId);
+        return await _postService.getPostsByIds(bookmarkedIds);
       case 3: // Liked
         RemoteLogger.logBackendCall('/likes/user/$userId', actionId: actionId);
         return await _postService.getUserLikedPosts(userId);
@@ -217,6 +244,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 3:
         _userLikedPosts = content;
         break;
+    }
+  }
+
+  // ✅ NOUVEAU: Recharge uniquement le tab Saved quand bookmarks changent
+  Future<void> _reloadSavedTab() async {
+    final authProvider = Provider.of<auth_provider.AuthProvider>(
+      context,
+      listen: false,
+    );
+    final String? currentUserId = authProvider.currentUser?.id;
+    if (currentUserId == null) return;
+
+    try {
+      final content = await _loadTabContentData(
+        currentUserId, 
+        2, // Tab Saved
+        null,
+      );
+      
+      if (!mounted) return;
+      setState(() {
+        _userSavedPosts = content;
+        _savedPostsCount = content.length;
+      });
+    } catch (e) {
+      RemoteLogger.log('❌ Error reloading saved tab: $e');
     }
   }
 

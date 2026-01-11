@@ -211,6 +211,19 @@ class PostService {
     }
   }
 
+  // Get posts by IDs (for bookmarked posts from provider)
+  Future<List<PostModel>> getPostsByIds(List<String> postIds) async {
+    try {
+      if (postIds.isEmpty) return [];
+      
+      final maps = await PostApiService.getPostsByIds(postIds);
+      return maps.map((e) => PostModel.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint('getPostsByIds error: $e');
+      return [];
+    }
+  }
+
   // Delete a post
   Future<bool> deletePost(String postId) async {
     try {

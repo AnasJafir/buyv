@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+from pydantic import BaseModel
 
 from .database import get_db
 from .models import User, Post, PostLike, PostBookmark
@@ -439,6 +440,59 @@ def is_post_bookmarked(
         PostBookmark.user_id == current_user.id
     ).first()
     return {"isBookmarked": existing is not None}
+
+
+class PostIdsList(BaseModel):
+    post_ids: List[str]
+
+
+@router.post("/by-ids", response_model=List[PostOut])
+def get_posts_by_ids(
+    payload: PostIdsList,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get multiple posts by their UIDs (for bookmarked posts from provider)"""
+    if not payload.post_ids:
+        return []
+    
+    # Fetch posts
+    rows = db.query(Post).filter(Post.uid.in_(payload.post_ids)).all()
+    if not rows:
+        return []
+    
+    # Fetch authors
+    user_ids = list({p.user_id for p in rows})
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+    user_map = {u.id: u for u in users}
+    
+    # Fetch my likes and bookmarks
+    post_ids = [r.id for r in rows]
+    my_likes = db.query(PostLike).filter(
+        PostLike.user_id == current_user.id, 
+        PostLike.post_id.in_(post_ids)
+    ).all()
+    liked_post_ids = {l.post_id for l in my_likes}
+    
+    my_bookmarks = db.query(PostBookmark).filter(
+        PostBookmark.user_id == current_user.id, 
+        PostBookmark.post_id.in_(post_ids)
+    ).all()
+    bookmarked_post_ids = {b.post_id for b in my_bookmarks}
+    
+    out = []
+    for r in rows:
+        author = user_map.get(r.user_id)
+        if not author:
+            continue
+        out.append(_map_post_out(
+            r, 
+            author, 
+            liked=(r.id in liked_post_ids),
+            bookmarked=(r.id in bookmarked_post_ids),
+        ))
+    
+    return out
 
 
 @router.delete("/{post_uid}")
